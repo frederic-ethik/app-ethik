@@ -1,0 +1,238 @@
+// Schéma de base de données — Application Ethik & Co (temps & frais)
+// Modèle validé avec Frédéric le 19/06/2026.
+// Doc Prisma : https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===================== ENUMS =====================
+
+enum TypeClient {
+  ESS_ASSO // "ESS - Asso"
+  ESS_SCOOP // "ESS - SCoop"
+  SECTEUR_MARCHAND // "Secteur marchand"
+  NON_FACTURABLE // "Autre non facturable"
+  NON_FACTURE // "Autre non facturé"
+}
+
+enum TypeFacturation {
+  HORAIRE
+  REFACTURATION_REEL
+  NON_FACTURE
+}
+
+enum Vehicule {
+  NISSAN_ARIYA_3CV // 100% électrique → majoration +20%
+  VW_SHARAN_8CV // diesel (barème "7 CV et plus")
+}
+
+enum MoyenPaiement {
+  CARTE
+  ESPECES
+  CHEQUE
+  NC
+}
+
+// ===================== CLIENTS =====================
+
+model Client {
+  id            String     @id @default(uuid())
+  refAccess     Int?       @unique // N° d'origine dans la base Access
+  raisonSociale String
+  siret         String?
+  typeClient    TypeClient
+  adresse       String?
+  codePostal    String?
+  ville         String?
+
+  // Contact (nom + email + téléphone ajoutés au cadrage du 19/06)
+  contactNom       String?
+  contactPrenom    String?
+  contactTitre     String?
+  contactEmail     String?
+  contactTelephone String?
+
+  // Cible mensuelle de jours travaillés (ajout du 19/06 — pilote la progression)
+  cibleJoursMensuelle Float?
+
+  actif Boolean @default(true)
+
+  // Accès client lecture seule — paramétrage PAR CLIENT avec sections au choix
+  tokenAcces    String?  @unique
+  accesActif    Boolean  @default(false)
+  accesSynthese Boolean  @default(true) // synthèse IA
+  accesTableau  Boolean  @default(true) // tableau de synthèse
+  accesDetail   Boolean  @default(false) // détail des activités
+  accesJours    Boolean  @default(true) // jours travaillés validés
+
+  missionTypes MissionType[]
+  activities   Activity[]
+  rapports     RapportMensuel[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===================== TYPES DE MISSIONS =====================
+
+model MissionType {
+  id        String  @id @default(uuid())
+  refAccess Int?    @unique // N° d'origine Access
+  clientId  String
+  client    Client  @relation(fields: [clientId], references: [id])
+
+  categorie       String // niveau 1
+  objet           String // niveau 2
+  detail          String? // niveau 3
+  typeFacturation TypeFacturation @default(NON_FACTURE)
+
+  // (cible_mensuelle_h SUPPRIMÉE le 19/06 — la cible est désormais en jours, côté Client)
+
+  actif Boolean @default(true) // = NON OLD dans Access
+
+  activities Activity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+// ===================== ACTIVITÉS (table centrale) =====================
+
+model Activity {
+  id        String @id @default(uuid())
+  refAccess Int?   @unique // N° d'origine Access
+
+  dateAct  DateTime  @db.Date
+  debutAct DateTime // horodatage de début (badgeage à la seconde, ou saisi)
+  finAct   DateTime? // null tant qu'une session de badgeage est en cours
+  dureeH   Float     @default(0) // recalculée = (fin - début) en heures décimales
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  missionTypeId String?
+  missionType   MissionType? @relation(fields: [missionTypeId], references: [id])
+
+  commentaire String?
+
+  hasDeplacement Boolean      @default(false)
+  deplacement    Deplacement?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([dateAct])
+  @@index([missionTypeId])
+}
+
+// ===================== DÉPLACEMENTS =====================
+
+model Deplacement {
+  id String @id @default(uuid())
+
+  activityId String   @unique // 1 déplacement rattaché à 1 activité
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  dateDeplacement DateTime  @db.Date
+  description     String?
+  vehicule        Vehicule?
+  lieuDepart      String?
+  lieuArrivee     String?
+
+  kmAller     Float?
+  kmRetour    Float?
+  kmTotal     Float?
+  indemniteKm Float? // calculée selon barème URSSAF + cumul annuel + majoration élec.
+
+  fraisTransport Float?
+  fraisParking   Float?
+  fraisRepas     Float?
+  fraisHotel     Float?
+  fraisDivers    Float?
+  totalFrais     Float  @default(0)
+
+  moyenPaiement MoyenPaiement?
+
+  // Plusieurs justificatifs par déplacement (cadrage du 19/06)
+  justificatifs Justificatif[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Justificatif {
+  id            String      @id @default(uuid())
+  deplacementId String
+  deplacement   Deplacement @relation(fields: [deplacementId], references: [id], onDelete: Cascade)
+  url           String // URL du fichier (stockage cloud)
+  nomFichier    String?
+  createdAt     DateTime    @default(now())
+
+  @@index([deplacementId])
+}
+
+// ===================== RAPPORT MENSUEL (validation manuelle) =====================
+// Stocke les valeurs validées/éditées manuellement par client et par mois :
+// jours travaillés validés, et texte de synthèse IA corrigé. Repris dans le lien client.
+
+model RapportMensuel {
+  id       String @id @default(uuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+  annee    Int
+  mois     Int // 1-12
+
+  joursValides     Float? // jours travaillés validés manuellement
+  syntheseValidee  String? // texte de synthèse édité/validé par le consultant
+  syntheseValideAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, annee, mois])
+}
+
+// ===================== RÉGLAGES (paramétrage, ligne unique) =====================
+
+model Settings {
+  id String @id @default("singleton")
+
+  // Barèmes URSSAF officiels 2026 (JSON : tranches 5000/20000 km + majoration élec.)
+  baremeNissanAriya Json
+  baremeVwSharan    Json
+
+  dureeJourneeH    Float  @default(7)
+  seuilAlerteJours Int    @default(7)
+  googleMapsApiKey String?
+  adresseDomicile  String?
+  iban             String?
+  bic              String?
+
+  // Infos personnelles pour les en-têtes de documents
+  nomConsultant   String? @default("Frédéric WOEHREL")
+  titreConsultant String? @default("Consultant")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===================== UTILISATEUR (authentification consultant) =====================
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

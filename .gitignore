@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# Données personnelles exportées depuis Access (ne pas committer)
+/prisma/access-data.json
