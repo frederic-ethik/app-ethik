@@ -33,6 +33,7 @@ export default async function RootLayout({
         {session && (
           <OpenSessionBanner
             id={session.id}
+            clientId={session.clientId}
             debutISO={session.debutAct.toISOString()}
             client={session.client.raisonSociale}
             categorie={session.missionType?.categorie ?? null}

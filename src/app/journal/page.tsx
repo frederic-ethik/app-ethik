@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { MOIS, JOURS, formatHeuresCourt, heureDe } from "@/lib/format";
 import { supprimerActivite } from "@/app/actions";
@@ -105,6 +106,9 @@ export default async function JournalPage({
                         </span>
                         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           {a.deplacement && <span title="Déplacement rattaché" style={{ color: "#00B0F0", fontSize: 13 }}>🚗</span>}
+                          {!enCours && (
+                            <Link href={`/saisie/${a.id}`} title="Modifier" style={{ color: "#0077a8", fontSize: 14, textDecoration: "none" }}>✎</Link>
+                          )}
                           {!enCours && (
                             <form action={supprimerActivite}>
                               <input type="hidden" name="id" value={a.id} />

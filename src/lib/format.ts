@@ -32,3 +32,22 @@ export function formatHeuresCourt(h: number): string {
 export function heureDe(d: Date): string {
   return `${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")}`;
 }
+
+// Heure murale Europe/Paris d'un instant réel (robuste quel que soit le fuseau du serveur)
+export function parisParts(d: Date): { date: string; time: string } {
+  const f = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Paris",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hourCycle: "h23",
+  });
+  const p = Object.fromEntries(f.formatToParts(d).map((x) => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}:${p.second}` };
+}
+
+// Convertit un instant en heure murale Europe/Paris, stockée comme timestamp UTC-étiqueté
+// (cohérent avec la saisie manuelle, qui enregistre l'heure telle que tapée)
+export function parisWallDate(d: Date): Date {
+  const { date, time } = parisParts(d);
+  return new Date(`${date}T${time}.000Z`);
+}

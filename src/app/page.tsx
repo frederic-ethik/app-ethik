@@ -27,7 +27,7 @@ export default async function Home() {
   for (const a of moisActs) {
     parClient.set(a.client.raisonSociale, (parClient.get(a.client.raisonSociale) ?? 0) + a.dureeH);
   }
-  const clientsTries = [...parClient.entries()].sort((x, y) => y[1] - x[1]);
+  const clientsTries = [...parClient.entries()].filter(([, h]) => h > 0).sort((x, y) => y[1] - x[1]);
   const maxClient = clientsTries.length ? clientsTries[0][1] : 1;
   const recentes = moisActs.slice(0, 8);
 
