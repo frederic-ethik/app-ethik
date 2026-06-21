@@ -124,6 +124,7 @@ function NoteFraisDoc({ data, logo }: { data: NoteFraisData; logo: Buffer | null
         <View style={s.footer}>
           <View>
             <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 2 }}>Coordonnées bancaires</Text>
+            {data.titulaireCompte ? <Text>Titulaire : {data.titulaireCompte}</Text> : null}
             <Text>IBAN : {data.iban || "—"}</Text>
             <Text>BIC : {data.bic || "—"}</Text>
           </View>

@@ -261,6 +261,64 @@ export async function validerSynthese(formData: FormData) {
   redirect(`/rapports?client=${encodeURIComponent(clientId)}&mois=${annee}-${String(mois).padStart(2, "0")}&saved=1`);
 }
 
+// Enregistrement des réglages (ligne unique « singleton »)
+export async function enregistrerReglages(formData: FormData) {
+  const txt = (k: string) => {
+    const v = String(formData.get(k) ?? "").trim();
+    return v === "" ? null : v;
+  };
+  const num = (k: string, def: number) => {
+    const v = String(formData.get(k) ?? "").replace(",", ".").trim();
+    return v === "" || Number.isNaN(Number(v)) ? def : Number(v);
+  };
+
+  // Reconstruction d'un barème en préservant les "constantes" existantes (non éditées ici)
+  const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
+  const baremeFromForm = (prefix: string, existant: unknown): Bareme => {
+    const ex = (existant as Bareme | null) ?? { tranches: [] };
+    const tr = ex.tranches ?? [];
+    const taux = (k: string) => num(k, 0);
+    return {
+      puissanceFiscale: txt(`${prefix}_pf`) ?? ex.puissanceFiscale ?? "",
+      electrique: formData.get(`${prefix}_elec`) === "on",
+      majoration: num(`${prefix}_maj`, 0) / 100, // saisi en %, stocké en décimal
+      tranches: [
+        { max: 5000, taux: taux(`${prefix}_t1`), constante: tr[0]?.constante ?? 0 },
+        { max: 20000, taux: taux(`${prefix}_t2`), constante: tr[1]?.constante ?? 0 },
+        { max: null, taux: taux(`${prefix}_t3`), constante: tr[2]?.constante ?? 0 },
+      ],
+    };
+  };
+
+  const data = {
+    nomConsultant: txt("nomConsultant"),
+    titreConsultant: txt("titreConsultant"),
+    adresseDomicile: txt("adresseDomicile"),
+    titulaireCompte: txt("titulaireCompte"),
+    iban: txt("iban"),
+    bic: txt("bic"),
+    dureeJourneeH: num("dureeJourneeH", 7),
+    seuilAlerteJours: Math.round(num("seuilAlerteJours", 7)),
+    demiJMatinFinMin: Math.round(num("demiJMatinFin", 810)),
+    demiJApremDebutMin: Math.round(num("demiJApremDebut", 720)),
+    demiJSeuilMin: Math.round(num("demiJSeuil", 90)),
+    baremeNissanAriya: baremeFromForm("ariya", settings?.baremeNissanAriya) as unknown as object,
+    baremeVwSharan: baremeFromForm("sharan", settings?.baremeVwSharan) as unknown as object,
+  };
+
+  await prisma.settings.upsert({
+    where: { id: "singleton" },
+    update: data,
+    create: { id: "singleton", ...data },
+  });
+
+  revalidatePath("/reglages");
+  revalidatePath("/note-frais");
+  revalidatePath("/journal");
+  revalidatePath("/");
+  redirect("/reglages?saved=1");
+}
+
 // Enregistrement (création/édition) d'un déplacement rattaché à une activité
 export async function enregistrerDeplacement(formData: FormData) {
   const activityId = String(formData.get("activityId") ?? "");

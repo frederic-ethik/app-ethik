@@ -103,7 +103,7 @@ export default function SyntheseTable({
             <td style={{ padding: "4px 8px", ...stickyLeft, color: "#a5a5a5" }}>Jours travaillés (indicatif)</td>
             <td style={{ padding: "4px 8px" }}></td>
             {ms.map((mm, i) => (
-              <td key={mm.key} style={{ padding: "4px 8px", textAlign: "right" }}>{joursRow[i]}</td>
+              <td key={mm.key} style={{ padding: "4px 8px", textAlign: "right" }}>{joursRow[i].toLocaleString("fr-FR")}</td>
             ))}
           </tr>
         </tfoot>

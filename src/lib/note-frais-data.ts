@@ -33,6 +33,7 @@ export type NoteFraisData = {
   nomConsultant: string;
   titreConsultant: string;
   adresse: string;
+  titulaireCompte: string;
   iban: string;
   bic: string;
   total: number;
@@ -126,6 +127,7 @@ export async function getNoteFraisData(clientId: string, debut: string, fin: str
     nomConsultant: settings?.nomConsultant ?? "Frédéric WOEHREL",
     titreConsultant: settings?.titreConsultant ?? "Consultant",
     adresse: settings?.adresseDomicile ?? "",
+    titulaireCompte: settings?.titulaireCompte ?? "",
     iban: settings?.iban ?? "",
     bic: settings?.bic ?? "",
     total: totaux.stotal,

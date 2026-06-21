@@ -4,6 +4,7 @@ import { validerJoursRapport, genererSynthese } from "@/app/actions";
 import RapportNav from "@/components/RapportNav";
 import SyntheseTable from "@/components/SyntheseTable";
 import SyntheseClient from "@/components/SyntheseClient";
+import { totalDemiJournees, REGLE_DEMI_J_DEFAUT, type ActivitePlage, type RegleDemiJournee } from "@/lib/demi-journees";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function RapportsPage({
   type Row = { cat: string; obj: string; key: string; per: Record<string, number>; total: number };
   const rowsMap = new Map<string, Row>();
   const monthTotal: Record<string, number> = {};
-  const monthDays: Record<string, Set<string>> = {};
+  const plagesMois: Record<string, ActivitePlage[]> = {};
   for (const a of acts) {
     const mk = `${a.dateAct.getUTCFullYear()}-${pad(a.dateAct.getUTCMonth() + 1)}`;
     const tk = a.missionTypeId ?? "—";
@@ -62,8 +63,21 @@ export default async function RapportsPage({
     row.per[mk] = (row.per[mk] ?? 0) + a.dureeH;
     row.total += a.dureeH;
     monthTotal[mk] = (monthTotal[mk] ?? 0) + a.dureeH;
-    (monthDays[mk] ??= new Set()).add(a.dateAct.toISOString().slice(0, 10));
+    // Plage horaire de l'activité (pour le décompte des demi-journées). On ignore les sessions non clôturées.
+    if (a.finAct) {
+      const debutMin = a.debutAct.getUTCHours() * 60 + a.debutAct.getUTCMinutes();
+      const finMin = a.finAct.getUTCHours() * 60 + a.finAct.getUTCMinutes();
+      (plagesMois[mk] ??= []).push({ jour: a.dateAct.toISOString().slice(0, 10), debutMin, finMin });
+    }
   }
+
+  // Règle de calcul des demi-journées (paramétrable dans Réglages)
+  const regleDemiJ: RegleDemiJournee = {
+    matinFinMin: settings?.demiJMatinFinMin ?? REGLE_DEMI_J_DEFAUT.matinFinMin,
+    apremDebutMin: settings?.demiJApremDebutMin ?? REGLE_DEMI_J_DEFAUT.apremDebutMin,
+    seuilMin: settings?.demiJSeuilMin ?? REGLE_DEMI_J_DEFAUT.seuilMin,
+  };
+  const joursDe = (mk: string) => totalDemiJournees(plagesMois[mk] ?? [], regleDemiJ);
   const rows = [...rowsMap.values()].sort((x, y) => x.cat.localeCompare(y.cat) || x.obj.localeCompare(y.obj));
   const activeMonths = Object.values(monthTotal).filter((t) => t > 0).length || 1;
 
@@ -91,12 +105,12 @@ export default async function RapportsPage({
   const rowsData = rows.map((r) => ({ key: r.key, cat: r.cat, obj: r.obj, moy: r.total / activeMonths, per: allMonths.map((mm) => r.per[mm.key] ?? 0) }));
   const totalRow = allMonths.map((mm) => monthTotal[mm.key] ?? 0);
   const facturesRow = allMonths.map((mm) => factMap.get(mm.key) ?? null);
-  const joursRow = allMonths.map((mm) => monthDays[mm.key]?.size ?? 0);
+  const joursRow = allMonths.map((mm) => joursDe(mm.key));
   const moyTotal = rows.reduce((s, r) => s + r.total, 0) / activeMonths;
 
   // Indicateurs du mois sélectionné (focus)
   const totalSel = monthTotal[selKey] ?? 0;
-  const joursIndic = monthDays[selKey]?.size ?? 0;
+  const joursIndic = joursDe(selKey);
   const joursFactures = factMap.get(selKey) ?? null;
   const moyFacturee = joursFactures ? totalSel / joursFactures : null;
   const synthese = rapports.find((r) => r.annee === selY && r.mois === selM)?.syntheseValidee ?? "";
@@ -178,7 +192,7 @@ export default async function RapportsPage({
             )}
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-end" }}>
               <div><div style={{ fontSize: 12, color: "#997300" }}>Total heures</div><div style={{ fontSize: 18, fontWeight: 600 }}>{formatHeuresCourt(totalSel)}</div></div>
-              <div><div style={{ fontSize: 12, color: "#a5a5a5" }}>Jours travaillés (indicatif)</div><div style={{ fontSize: 18, fontWeight: 600, color: "#a5a5a5" }}>{joursIndic} j</div></div>
+              <div><div style={{ fontSize: 12, color: "#a5a5a5" }}>Jours travaillés (indicatif)</div><div style={{ fontSize: 18, fontWeight: 600, color: "#a5a5a5" }}>{joursIndic.toLocaleString("fr-FR")} j</div></div>
               <form action={validerJoursRapport} style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
                 <input type="hidden" name="clientId" value={clientId} />
                 <input type="hidden" name="annee" value={selY} />

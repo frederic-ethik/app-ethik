@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/journal", label: "Journal" },
   { href: "/rapports", label: "Rapports" },
   { href: "/note-frais", label: "Note de frais" },
+  { href: "/reglages", label: "Réglages" },
 ];
 
 export default function SiteHeader() {

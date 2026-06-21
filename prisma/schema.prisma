@@ -9,7 +9,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // L'URL de connexion est fournie par prisma.config.ts (migrations) et par l'adapter PrismaPg (application).
 }
 
 // ===================== ENUMS =====================
@@ -213,8 +213,15 @@ model Settings {
 
   dureeJourneeH    Float  @default(7)
   seuilAlerteJours Int    @default(7)
+
+  // Règle de calcul des demi-journées travaillées (indicateur interne, jamais communiqué au client).
+  // Minutes depuis minuit. Défauts : matin avant 13h30 (810), après-midi après 12h00 (720), seuil 90 min.
+  demiJMatinFinMin   Int @default(810) // borne haute de la plage du matin
+  demiJApremDebutMin Int @default(720) // borne basse de la plage de l'après-midi
+  demiJSeuilMin      Int @default(90) // durée cumulée mini pour compter une demi-journée
   googleMapsApiKey String?
   adresseDomicile  String?
+  titulaireCompte  String?
   iban             String?
   bic              String?
 

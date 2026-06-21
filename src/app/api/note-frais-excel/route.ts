@@ -59,6 +59,7 @@ export async function GET(req: Request) {
 
   ws.addRow([]);
   ws.addRow(["Coordonnées bancaires"]).font = { bold: true };
+  if (data.titulaireCompte) ws.addRow(["Titulaire", data.titulaireCompte]);
   ws.addRow(["IBAN", data.iban]);
   ws.addRow(["BIC", data.bic]);
   ws.addRow([]);

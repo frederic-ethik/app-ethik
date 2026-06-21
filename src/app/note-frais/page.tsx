@@ -16,7 +16,7 @@ export default async function NoteFraisPage({
   const y = now.getUTCFullYear();
   const m = now.getUTCMonth();
 
-  const clients = await prisma.client.findMany({ orderBy: { raisonSociale: "asc" }, select: { id: true, raisonSociale: true, actif: true } });
+  const clients = await prisma.client.findMany({ orderBy: [{ actif: "desc" }, { raisonSociale: "asc" }], select: { id: true, raisonSociale: true, actif: true } });
   const client = sp.client || clients.find((c) => c.actif)?.id || clients[0]?.id || "tous";
   const debut = sp.debut || `${y}-${pad(m + 1)}-01`;
   const fin = sp.fin || `${y}-${pad(m + 1)}-${pad(new Date(Date.UTC(y, m + 1, 0)).getUTCDate())}`;
