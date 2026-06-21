@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/saisie", label: "Saisie" },
   { href: "/journal", label: "Journal" },
   { href: "/rapports", label: "Rapports" },
+  { href: "/note-frais", label: "Note de frais" },
 ];
 
 export default function SiteHeader() {
