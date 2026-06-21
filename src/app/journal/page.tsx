@@ -22,7 +22,7 @@ export default async function JournalPage({
     prisma.client.findMany({ orderBy: { raisonSociale: "asc" }, select: { id: true, raisonSociale: true } }),
     prisma.activity.findMany({
       where: { dateAct: { gte: debutMois, lt: finMois }, ...(clientId ? { clientId } : {}) },
-      include: { client: true, missionType: true, deplacement: { select: { id: true } } },
+      include: { client: true, missionType: true, deplacement: { select: { id: true, totalFrais: true } } },
       orderBy: [{ dateAct: "desc" }, { debutAct: "desc" }],
     }),
   ]);
@@ -105,9 +105,17 @@ export default async function JournalPage({
                           {enCours ? <span style={{ color: "#5f8e2a" }}>en cours…</span> : formatHeuresCourt(a.dureeH)}
                         </span>
                         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          {a.deplacement && <span title="Déplacement rattaché" style={{ color: "#00B0F0", fontSize: 13 }}>🚗</span>}
                           {!enCours && (
-                            <Link href={`/saisie/${a.id}`} title="Modifier" style={{ color: "#0077a8", fontSize: 14, textDecoration: "none" }}>✎</Link>
+                            a.deplacement ? (
+                              <Link href={`/deplacement/${a.id}`} title="Déplacement rattaché — modifier" style={{ color: "#00B0F0", fontSize: 12, textDecoration: "none" }}>
+                                🚗 {a.deplacement.totalFrais.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €
+                              </Link>
+                            ) : (
+                              <Link href={`/deplacement/${a.id}`} title="Ajouter un déplacement" style={{ color: "#a5a5a5", fontSize: 13, textDecoration: "none" }}>+ 🚗</Link>
+                            )
+                          )}
+                          {!enCours && (
+                            <Link href={`/saisie/${a.id}`} title="Modifier l'activité" style={{ color: "#0077a8", fontSize: 14, textDecoration: "none" }}>✎</Link>
                           )}
                           {!enCours && (
                             <form action={supprimerActivite}>

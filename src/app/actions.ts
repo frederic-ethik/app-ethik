@@ -3,6 +3,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { dureeHeures, parisParts, parisWallDate, formatHeuresCourt, MOIS } from "@/lib/format";
+import { indemniteKm, type Bareme } from "@/lib/bareme";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -258,6 +259,91 @@ export async function validerSynthese(formData: FormData) {
 
   revalidatePath("/rapports");
   redirect(`/rapports?client=${encodeURIComponent(clientId)}&mois=${annee}-${String(mois).padStart(2, "0")}&saved=1`);
+}
+
+// Enregistrement (création/édition) d'un déplacement rattaché à une activité
+export async function enregistrerDeplacement(formData: FormData) {
+  const activityId = String(formData.get("activityId") ?? "");
+  if (!activityId) return;
+
+  const num = (k: string) => {
+    const v = String(formData.get(k) ?? "").replace(",", ".").trim();
+    return v === "" || Number.isNaN(Number(v)) ? null : Number(v);
+  };
+  const dateDeplacement = String(formData.get("date") ?? "");
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const vehiculeRaw = String(formData.get("vehicule") ?? "");
+  const vehicule = vehiculeRaw === "NISSAN_ARIYA_3CV" || vehiculeRaw === "VW_SHARAN_8CV" ? vehiculeRaw : null;
+  const lieuDepart = String(formData.get("lieuDepart") ?? "").trim() || null;
+  const lieuArrivee = String(formData.get("lieuArrivee") ?? "").trim() || null;
+  const kmAller = num("kmAller");
+  const kmRetour = num("kmRetour");
+  const kmTotal = vehicule ? (kmAller ?? 0) + (kmRetour ?? 0) : null;
+  const fraisTransport = num("fraisTransport");
+  const fraisParking = num("fraisParking");
+  const fraisRepas = num("fraisRepas");
+  const fraisHotel = num("fraisHotel");
+  const fraisDivers = num("fraisDivers");
+  const moyenRaw = String(formData.get("moyenPaiement") ?? "");
+  const moyenPaiement = ["CARTE", "ESPECES", "CHEQUE", "NC"].includes(moyenRaw) ? moyenRaw : null;
+
+  if (!dateDeplacement) throw new Error("La date du déplacement est requise.");
+
+  // Indemnité kilométrique URSSAF (selon véhicule + cumul annuel)
+  let indemnite = 0;
+  if (vehicule && kmTotal && kmTotal > 0) {
+    const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
+    const bareme = (vehicule === "NISSAN_ARIYA_3CV" ? settings?.baremeNissanAriya : settings?.baremeVwSharan) as unknown as Bareme | null;
+    if (bareme) {
+      const annee = Number(dateDeplacement.slice(0, 4));
+      const debut = new Date(Date.UTC(annee, 0, 1));
+      const fin = new Date(Date.UTC(annee + 1, 0, 1));
+      const agg = await prisma.deplacement.aggregate({
+        _sum: { kmTotal: true },
+        where: { vehicule: vehicule as never, dateDeplacement: { gte: debut, lt: fin }, NOT: { activityId } },
+      });
+      indemnite = indemniteKm(bareme, kmTotal, agg._sum.kmTotal ?? 0);
+    }
+  }
+  const totalFrais =
+    Math.round((indemnite + (fraisTransport ?? 0) + (fraisParking ?? 0) + (fraisRepas ?? 0) + (fraisHotel ?? 0) + (fraisDivers ?? 0)) * 100) / 100;
+
+  const data = {
+    dateDeplacement: new Date(`${dateDeplacement}T00:00:00.000Z`),
+    description,
+    vehicule: vehicule as never,
+    lieuDepart,
+    lieuArrivee,
+    kmAller,
+    kmRetour,
+    kmTotal,
+    indemniteKm: indemnite,
+    fraisTransport,
+    fraisParking,
+    fraisRepas,
+    fraisHotel,
+    fraisDivers,
+    totalFrais,
+    moyenPaiement: moyenPaiement as never,
+  };
+
+  await prisma.deplacement.upsert({ where: { activityId }, update: data, create: { activityId, ...data } });
+  await prisma.activity.update({ where: { id: activityId }, data: { hasDeplacement: true } });
+
+  revalidatePath("/journal");
+  revalidatePath("/");
+  redirect("/journal?ok=1");
+}
+
+// Suppression d'un déplacement
+export async function supprimerDeplacement(formData: FormData) {
+  const activityId = String(formData.get("activityId") ?? "");
+  if (!activityId) return;
+  await prisma.deplacement.deleteMany({ where: { activityId } });
+  await prisma.activity.update({ where: { id: activityId }, data: { hasDeplacement: false } });
+  revalidatePath("/journal");
+  revalidatePath("/");
+  redirect("/journal?ok=1");
 }
 
 // Suppression d'une activité (depuis le journal)
