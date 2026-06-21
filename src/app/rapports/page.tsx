@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { MOIS, formatHM, formatHeuresCourt, heureDe } from "@/lib/format";
-import { validerJoursRapport } from "@/app/actions";
+import { validerJoursRapport, genererSynthese } from "@/app/actions";
 import RapportNav from "@/components/RapportNav";
 import SyntheseTable from "@/components/SyntheseTable";
+import SyntheseClient from "@/components/SyntheseClient";
 
 export const dynamic = "force-dynamic";
 
@@ -98,6 +99,7 @@ export default async function RapportsPage({
   const joursIndic = monthDays[selKey]?.size ?? 0;
   const joursFactures = factMap.get(selKey) ?? null;
   const moyFacturee = joursFactures ? totalSel / joursFactures : null;
+  const synthese = rapports.find((r) => r.annee === selY && r.mois === selM)?.syntheseValidee ?? "";
   const detail = acts.filter((a) => `${a.dateAct.getUTCFullYear()}-${pad(a.dateAct.getUTCMonth() + 1)}` === selKey);
 
   const field = { fontSize: 14, padding: "8px 10px", border: "1px solid rgba(0,0,0,.2)", borderRadius: 8, background: "#fff", color: "#595959" } as const;
@@ -228,13 +230,24 @@ export default async function RapportsPage({
             )}
           </div>
 
-          {/* Partie C — Synthèse IA (à venir) */}
-          <div style={{ ...card, borderStyle: "dashed" }}>
-            <p style={partTitle}>C · Synthèse rédigée par l'IA (Claude)</p>
-            <p style={{ fontSize: 13, color: "#7F7F7F", margin: 0 }}>
-              ✨ Génération automatique d&apos;un résumé narratif du mois, à copier-coller dans votre email au client.
-              <br />À activer à l&apos;étape suivante (nécessite une clé API Anthropic — je vous guiderai).
-            </p>
+          {/* Partie C — Synthèse rédigée par l'IA */}
+          <div style={card}>
+            <p style={partTitle}>C · Synthèse rédigée par l&apos;IA (Claude)</p>
+            {synthese ? (
+              <SyntheseClient clientId={clientId!} annee={selY} mois={selM} initial={synthese} />
+            ) : (
+              <form action={genererSynthese}>
+                <input type="hidden" name="clientId" value={clientId} />
+                <input type="hidden" name="annee" value={selY} />
+                <input type="hidden" name="mois" value={selM} />
+                <p style={{ fontSize: 13, color: "#7F7F7F", margin: "0 0 12px" }}>
+                  ✨ Génère un résumé narratif du mois à partir de vos commentaires, à corriger puis copier-coller dans votre email au client.
+                </p>
+                <button type="submit" style={{ fontSize: 14, padding: "10px 16px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#92D050,#7cbf3f)", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+                  ✨ Générer la synthèse
+                </button>
+              </form>
+            )}
           </div>
         </>
       )}
