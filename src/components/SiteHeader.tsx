@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Tableau de bord" },
   { href: "/saisie", label: "Saisie" },
   { href: "/journal", label: "Journal" },
+  { href: "/rapports", label: "Rapports" },
 ];
 
 export default function SiteHeader() {

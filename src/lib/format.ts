@@ -28,6 +28,15 @@ export function formatHeuresCourt(h: number): string {
   return `${h.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} h`;
 }
 
+// "20h52" — format compact pour les tableaux de synthèse
+export function formatHM(h: number): string {
+  if (!h) return "–";
+  const H = Math.floor(h);
+  const M = Math.round((h - H) * 60);
+  if (M === 60) return `${H + 1}h`;
+  return M === 0 ? `${H}h` : `${H}h${String(M).padStart(2, "0")}`;
+}
+
 // Heure "HH:MM" à partir d'un timestamp stocké (lecture en UTC pour rester fidèle à la saisie)
 export function heureDe(d: Date): string {
   return `${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")}`;

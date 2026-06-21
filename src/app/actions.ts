@@ -137,6 +137,26 @@ export async function updateActivite(formData: FormData) {
   redirect("/journal?ok=1");
 }
 
+// Validation manuelle du nombre de jours travaillés d'un mois (rapport client)
+export async function validerJoursRapport(formData: FormData) {
+  const clientId = String(formData.get("clientId") ?? "");
+  const annee = Number(formData.get("annee"));
+  const mois = Number(formData.get("mois"));
+  const raw = String(formData.get("joursValides") ?? "").replace(",", ".").trim();
+  const joursValides = raw === "" ? null : Number(raw);
+
+  if (!clientId || !annee || !mois) return;
+
+  await prisma.rapportMensuel.upsert({
+    where: { clientId_annee_mois: { clientId, annee, mois } },
+    update: { joursValides },
+    create: { clientId, annee, mois, joursValides },
+  });
+
+  revalidatePath("/rapports");
+  redirect(`/rapports?client=${encodeURIComponent(clientId)}&mois=${annee}-${String(mois).padStart(2, "0")}&saved=1`);
+}
+
 // Suppression d'une activité (depuis le journal)
 export async function supprimerActivite(formData: FormData) {
   const id = String(formData.get("id") ?? "");
