@@ -1,12 +1,12 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { MOIS, formatHM, formatHeuresCourt, heureDe } from "@/lib/format";
 import { validerJoursRapport } from "@/app/actions";
+import RapportNav from "@/components/RapportNav";
+import SyntheseTable from "@/components/SyntheseTable";
 
 export const dynamic = "force-dynamic";
 
 const pad = (n: number) => String(n).padStart(2, "0");
-const WINDOW = 6;
 
 const TYPE_LABEL: Record<string, string> = {
   ESS_ASSO: "ESS · Association",
@@ -34,11 +34,6 @@ export default async function RapportsPage({
   });
   const clientId = sp.client || clients.find((c) => c.actif)?.id || clients[0]?.id;
   const client = clients.find((c) => c.id === clientId);
-
-  const moisStr = sp.mois || idxToKey(currentIdx);
-  const [selY, selM] = moisStr.split("-").map(Number);
-  const selKey = `${selY}-${pad(selM)}`;
-  const focusIdx = toIdx(selY, selM - 1);
 
   const [acts, rapports, settings] = await Promise.all([
     client
@@ -71,14 +66,32 @@ export default async function RapportsPage({
   const rows = [...rowsMap.values()].sort((x, y) => x.cat.localeCompare(y.cat) || x.obj.localeCompare(y.obj));
   const activeMonths = Object.values(monthTotal).filter((t) => t > 0).length || 1;
 
-  // Fenêtre de 6 mois, anti-chronologique (le plus récent = focus, à gauche)
-  const winMonths = Array.from({ length: WINDOW }, (_, i) => {
+  // Plage de mois du client (barre de navigation : du plus ancien au plus récent)
+  const times = acts.map((a) => a.dateAct.getTime());
+  const firstIdx = acts.length ? toIdx(new Date(Math.min(...times)).getUTCFullYear(), new Date(Math.min(...times)).getUTCMonth()) : currentIdx;
+  const lastIdx = acts.length ? toIdx(new Date(Math.max(...times)).getUTCFullYear(), new Date(Math.max(...times)).getUTCMonth()) : currentIdx;
+  const sliderMin = Math.min(firstIdx, currentIdx);
+  const sliderMax = currentIdx;
+
+  const requested = sp.mois || idxToKey(lastIdx);
+  const [reqY, reqM] = requested.split("-").map(Number);
+  const focusIdx = Math.min(Math.max(toIdx(reqY, reqM - 1), sliderMin), sliderMax);
+  const selY = Math.floor(focusIdx / 12);
+  const selM = (focusIdx % 12) + 1;
+  const selKey = idxToKey(focusIdx);
+  const moisStr = selKey;
+
+  // Tous les mois du focus vers le plus ancien (anti-chrono) — le composant client
+  // affichera autant de colonnes que la largeur le permet.
+  const allMonths = Array.from({ length: Math.min(focusIdx - sliderMin + 1, 60) }, (_, i) => {
     const idx = focusIdx - i;
-    return { idx, y: Math.floor(idx / 12), m: idx % 12, key: idxToKey(idx) };
+    return { key: idxToKey(idx), label: `${MOIS[idx % 12].slice(0, 4)} ${String(Math.floor(idx / 12)).slice(2)}` };
   });
-  const olderMois = idxToKey(focusIdx - WINDOW);
-  const newerMois = idxToKey(Math.min(focusIdx + WINDOW, currentIdx));
-  const canNewer = focusIdx < currentIdx;
+  const rowsData = rows.map((r) => ({ key: r.key, cat: r.cat, obj: r.obj, moy: r.total / activeMonths, per: allMonths.map((mm) => r.per[mm.key] ?? 0) }));
+  const totalRow = allMonths.map((mm) => monthTotal[mm.key] ?? 0);
+  const facturesRow = allMonths.map((mm) => factMap.get(mm.key) ?? null);
+  const joursRow = allMonths.map((mm) => monthDays[mm.key]?.size ?? 0);
+  const moyTotal = rows.reduce((s, r) => s + r.total, 0) / activeMonths;
 
   // Indicateurs du mois sélectionné (focus)
   const totalSel = monthTotal[selKey] ?? 0;
@@ -91,7 +104,6 @@ export default async function RapportsPage({
   const card = { background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "18px 20px", marginBottom: 22 } as const;
   const partTitle = { fontSize: 11, textTransform: "uppercase" as const, letterSpacing: ".04em", color: "#a5a5a5", margin: "0 0 8px" };
   const stickyLeft = { position: "sticky" as const, left: 0, background: "#fff" };
-  const navBtn = { fontSize: 13, padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(0,0,0,.2)", background: "#fff", color: "#0077a8", textDecoration: "none", cursor: "pointer" } as const;
 
   return (
     <>
@@ -135,78 +147,20 @@ export default async function RapportsPage({
           <div style={card}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
               <p style={{ ...partTitle, margin: 0 }}>A · Tableau de synthèse</p>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Link href={`/rapports?client=${clientId}&mois=${olderMois}`} style={navBtn}>‹ 6 mois plus anciens</Link>
-                {canNewer
-                  ? <Link href={`/rapports?client=${clientId}&mois=${newerMois}`} style={navBtn}>6 mois plus récents ›</Link>
-                  : <span style={{ ...navBtn, color: "#ccc", borderColor: "rgba(0,0,0,.08)", cursor: "default" }}>6 mois plus récents ›</span>}
+              <div style={{ flex: 1, maxWidth: 420, minWidth: 240 }}>
+                <RapportNav clientId={clientId!} min={sliderMin} max={sliderMax} value={focusIdx} />
               </div>
             </div>
 
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: 560 }}>
-                <thead>
-                  <tr style={{ color: "#7F7F7F" }}>
-                    <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid rgba(0,0,0,.2)", ...stickyLeft }}>Catégorie / Objet</th>
-                    <th style={{ textAlign: "right", padding: "6px 8px", borderBottom: "1px solid rgba(0,0,0,.2)" }}>Moy.</th>
-                    {winMonths.map((mm) => (
-                      <th key={mm.key} style={{ textAlign: "right", padding: "6px 8px", whiteSpace: "nowrap", borderBottom: "1px solid rgba(0,0,0,.2)", color: mm.key === selKey ? "#0077a8" : "#7F7F7F", fontWeight: mm.key === selKey ? 600 : 400 }}>
-                        {MOIS[mm.m].slice(0, 4)} {String(mm.y).slice(2)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.length === 0 ? (
-                    <tr><td colSpan={WINDOW + 2} style={{ padding: "12px 8px", color: "#a5a5a5" }}>Aucune activité.</td></tr>
-                  ) : (
-                    rows.map((r) => (
-                      <tr key={r.key} style={{ borderBottom: "1px solid rgba(0,0,0,.06)" }}>
-                        <td style={{ padding: "6px 8px", ...stickyLeft }}>
-                          <span style={{ fontWeight: 600 }}>{r.cat}</span><span style={{ color: "#7F7F7F" }}> › {r.obj}</span>
-                        </td>
-                        <td style={{ padding: "6px 8px", textAlign: "right", color: "#7F7F7F" }}>{formatHM(r.total / activeMonths)}</td>
-                        {winMonths.map((mm) => (
-                          <td key={mm.key} style={{ padding: "6px 8px", textAlign: "right", background: mm.key === selKey ? "#f3fbff" : undefined }}>{formatHM(r.per[mm.key] ?? 0)}</td>
-                        ))}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr style={{ fontWeight: 600, borderTop: "2px solid rgba(0,0,0,.15)" }}>
-                    <td style={{ padding: "7px 8px", ...stickyLeft }}>Total (heures)</td>
-                    <td style={{ padding: "7px 8px", textAlign: "right" }}>{formatHM(rows.reduce((s, r) => s + r.total, 0) / activeMonths)}</td>
-                    {winMonths.map((mm) => (
-                      <td key={mm.key} style={{ padding: "7px 8px", textAlign: "right", background: mm.key === selKey ? "#e9f6ff" : undefined }}>{formatHM(monthTotal[mm.key] ?? 0)}</td>
-                    ))}
-                  </tr>
-                  <tr style={{ fontWeight: 600, color: "#5f8e2a", background: "#f6fbef" }}>
-                    <td style={{ padding: "6px 8px", ...stickyLeft, color: "#5f8e2a", background: "#f6fbef" }}>Jours facturés</td>
-                    <td style={{ padding: "6px 8px" }}></td>
-                    {winMonths.map((mm) => {
-                      const v = factMap.get(mm.key);
-                      return <td key={mm.key} style={{ padding: "6px 8px", textAlign: "right", background: mm.key === selKey ? "#eef7e1" : undefined }}>{v != null ? v.toLocaleString("fr-FR") : "–"}</td>;
-                    })}
-                  </tr>
-                  <tr style={{ color: "#7F7F7F" }}>
-                    <td style={{ padding: "5px 8px", ...stickyLeft, color: "#7F7F7F" }}>Moyenne / jour facturé</td>
-                    <td style={{ padding: "5px 8px" }}></td>
-                    {winMonths.map((mm) => {
-                      const t = monthTotal[mm.key] ?? 0; const j = factMap.get(mm.key);
-                      return <td key={mm.key} style={{ padding: "5px 8px", textAlign: "right", background: mm.key === selKey ? "#f6fbef" : undefined }}>{j ? formatHM(t / j) : "–"}</td>;
-                    })}
-                  </tr>
-                  <tr style={{ color: "#a5a5a5", fontSize: 11 }}>
-                    <td style={{ padding: "4px 8px", ...stickyLeft, color: "#a5a5a5" }}>Jours travaillés (indicatif)</td>
-                    <td style={{ padding: "4px 8px" }}></td>
-                    {winMonths.map((mm) => (
-                      <td key={mm.key} style={{ padding: "4px 8px", textAlign: "right" }}>{monthDays[mm.key]?.size ?? "–"}</td>
-                    ))}
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <SyntheseTable
+              selKey={selKey}
+              months={allMonths}
+              rows={rowsData}
+              totalRow={totalRow}
+              facturesRow={facturesRow}
+              joursRow={joursRow}
+              moyTotal={moyTotal}
+            />
             <p style={{ fontSize: 11, color: "#a5a5a5", margin: "10px 0 0" }}>
               « Jours travaillés (indicatif) » = jours distincts avec activité (aide au calcul). Ce sont les « Jours facturés » qui font foi — modifiez-les ci-dessous (sélectionnez le mois voulu).
             </p>
