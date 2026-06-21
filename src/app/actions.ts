@@ -412,3 +412,93 @@ export async function supprimerActivite(formData: FormData) {
   revalidatePath("/journal");
   revalidatePath("/");
 }
+
+// ===================== GESTION DES CLIENTS & TYPES DE MISSIONS =====================
+
+const TYPE_CLIENT_VALS = ["ESS_ASSO", "ESS_SCOOP", "SECTEUR_MARCHAND", "NON_FACTURABLE", "NON_FACTURE"];
+const TYPE_FACT_VALS = ["HORAIRE", "REFACTURATION_REEL", "NON_FACTURE"];
+
+// Création ou modification d'un client (id="nouveau" ou absent → création)
+export async function enregistrerClient(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const txt = (k: string) => {
+    const v = String(formData.get(k) ?? "").trim();
+    return v === "" ? null : v;
+  };
+  const raisonSociale = txt("raisonSociale");
+  if (!raisonSociale) throw new Error("La raison sociale est obligatoire.");
+
+  const tc = String(formData.get("typeClient") ?? "");
+  const cibleRaw = String(formData.get("cibleJoursMensuelle") ?? "").replace(",", ".").trim();
+
+  const data = {
+    raisonSociale,
+    siret: txt("siret"),
+    typeClient: (TYPE_CLIENT_VALS.includes(tc) ? tc : "NON_FACTURE") as never,
+    adresse: txt("adresse"),
+    codePostal: txt("codePostal"),
+    ville: txt("ville"),
+    contactNom: txt("contactNom"),
+    contactPrenom: txt("contactPrenom"),
+    contactTitre: txt("contactTitre"),
+    contactEmail: txt("contactEmail"),
+    contactTelephone: txt("contactTelephone"),
+    cibleJoursMensuelle: cibleRaw === "" || Number.isNaN(Number(cibleRaw)) ? null : Number(cibleRaw),
+    actif: formData.get("actif") === "on",
+  };
+
+  let cid = id;
+  if (id && id !== "nouveau") {
+    await prisma.client.update({ where: { id }, data });
+  } else {
+    const c = await prisma.client.create({ data });
+    cid = c.id;
+  }
+
+  revalidatePath("/clients");
+  revalidatePath("/");
+  redirect(`/clients/${cid}?saved=1`);
+}
+
+// Archiver / réactiver un client (on n'efface jamais : il est lié aux activités historiques)
+export async function basculerClientActif(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const c = await prisma.client.findUnique({ where: { id }, select: { actif: true } });
+  await prisma.client.update({ where: { id }, data: { actif: !c?.actif } });
+  revalidatePath("/clients");
+  revalidatePath(`/clients/${id}`);
+}
+
+// Création ou modification d'un type de mission (rattaché à un client)
+export async function enregistrerMissionType(formData: FormData) {
+  const clientId = String(formData.get("clientId") ?? "");
+  const mid = String(formData.get("mid") ?? "");
+  const categorie = String(formData.get("categorie") ?? "").trim();
+  const objet = String(formData.get("objet") ?? "").trim();
+  if (!clientId || !categorie || !objet) throw new Error("La catégorie et l'objet sont obligatoires.");
+
+  const tf = String(formData.get("typeFacturation") ?? "");
+  const data = {
+    categorie,
+    objet,
+    detail: String(formData.get("detail") ?? "").trim() || null,
+    typeFacturation: (TYPE_FACT_VALS.includes(tf) ? tf : "NON_FACTURE") as never,
+  };
+
+  if (mid) await prisma.missionType.update({ where: { id: mid }, data });
+  else await prisma.missionType.create({ data: { clientId, ...data } });
+
+  revalidatePath(`/clients/${clientId}`);
+  redirect(`/clients/${clientId}?saved=1`);
+}
+
+// Archiver / réactiver un type de mission (jamais d'effacement : lié aux activités)
+export async function basculerMissionType(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const clientId = String(formData.get("clientId") ?? "");
+  if (!id) return;
+  const m = await prisma.missionType.findUnique({ where: { id }, select: { actif: true } });
+  await prisma.missionType.update({ where: { id }, data: { actif: !m?.actif } });
+  revalidatePath(`/clients/${clientId}`);
+}

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createActivite, startBadgeage, updateActivite, finaliserActivite } from "@/app/actions";
 import { dureeHeures, formatHeures } from "@/lib/format";
 
-type Client = { id: string; raisonSociale: string };
+type Client = { id: string; raisonSociale: string; actif?: boolean };
 type Type = { id: string; clientId: string; categorie: string; objet: string; detail: string | null };
 type Edit = {
   id: string;
@@ -165,7 +165,7 @@ export default function SaisieForm({
           <option value="">— Choisir un client —</option>
           {clients.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.raisonSociale}
+              {c.raisonSociale}{c.actif === false ? " (archivé)" : ""}
             </option>
           ))}
         </select>

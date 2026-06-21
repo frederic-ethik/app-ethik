@@ -19,7 +19,7 @@ export default async function JournalPage({
   const clientId = sp.client || "";
 
   const [clients, acts] = await Promise.all([
-    prisma.client.findMany({ orderBy: { raisonSociale: "asc" }, select: { id: true, raisonSociale: true } }),
+    prisma.client.findMany({ orderBy: [{ actif: "desc" }, { raisonSociale: "asc" }], select: { id: true, raisonSociale: true, actif: true } }),
     prisma.activity.findMany({
       where: { dateAct: { gte: debutMois, lt: finMois }, ...(clientId ? { clientId } : {}) },
       include: { client: true, missionType: true, deplacement: { select: { id: true, totalFrais: true } } },
@@ -72,7 +72,7 @@ export default async function JournalPage({
           <select name="client" defaultValue={clientId} style={field}>
             <option value="">Tous les clients</option>
             {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.raisonSociale}</option>
+              <option key={c.id} value={c.id}>{c.raisonSociale}{c.actif ? "" : " (archivé)"}</option>
             ))}
           </select>
         </div>

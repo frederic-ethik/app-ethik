@@ -18,7 +18,7 @@ export default async function EditActivitePage({
 
   const [act, clients, types] = await Promise.all([
     prisma.activity.findUnique({ where: { id }, include: { client: true } }),
-    prisma.client.findMany({ orderBy: { raisonSociale: "asc" }, select: { id: true, raisonSociale: true } }),
+    prisma.client.findMany({ orderBy: [{ actif: "desc" }, { raisonSociale: "asc" }], select: { id: true, raisonSociale: true, actif: true } }),
     prisma.missionType.findMany({
       orderBy: [{ categorie: "asc" }, { objet: "asc" }],
       select: { id: true, clientId: true, categorie: true, objet: true, detail: true },

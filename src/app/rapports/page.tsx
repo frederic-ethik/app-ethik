@@ -31,7 +31,7 @@ export default async function RapportsPage({
   const currentIdx = toIdx(now.getUTCFullYear(), now.getUTCMonth());
 
   const clients = await prisma.client.findMany({
-    orderBy: { raisonSociale: "asc" },
+    orderBy: [{ actif: "desc" }, { raisonSociale: "asc" }],
     select: { id: true, raisonSociale: true, typeClient: true, cibleJoursMensuelle: true, actif: true },
   });
   const clientId = sp.client || clients.find((c) => c.actif)?.id || clients[0]?.id;

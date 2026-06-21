@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/journal", label: "Journal" },
   { href: "/rapports", label: "Rapports" },
   { href: "/note-frais", label: "Note de frais" },
+  { href: "/clients", label: "Clients" },
   { href: "/reglages", label: "Réglages" },
 ];
 
