@@ -64,6 +64,9 @@ model Client {
 
   actif Boolean @default(true)
 
+  // Marque la propre structure du consultant (E&C) : ses heures = fonctionnement, pas du facturable
+  estStructure Boolean @default(false)
+
   // Accès client lecture seule — paramétrage PAR CLIENT avec sections au choix
   tokenAcces    String?  @unique
   accesActif    Boolean  @default(false)

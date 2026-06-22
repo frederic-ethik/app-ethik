@@ -115,11 +115,17 @@ export default async function FicheClientPage({
           </div>
         </div>
 
-        <div style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "#595959" }}>
-            <input type="checkbox" name="actif" defaultChecked={isNew ? true : client!.actif} style={{ width: 16, height: 16 }} />
-            Client actif (décochez pour l&apos;archiver)
-          </label>
+        <div style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "#595959" }}>
+              <input type="checkbox" name="actif" defaultChecked={isNew ? true : client!.actif} style={{ width: 16, height: 16 }} />
+              Client actif (décochez pour l&apos;archiver)
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "#595959" }}>
+              <input type="checkbox" name="estStructure" defaultChecked={isNew ? false : client!.estStructure} style={{ width: 16, height: 16 }} />
+              Ma structure (E&amp;C) — heures de fonctionnement, non facturables
+            </label>
+          </div>
           <button type="submit" style={{ fontSize: 15, fontWeight: 600, padding: "11px 22px", borderRadius: 8, background: "#00B0F0", color: "#fff", border: "none", cursor: "pointer" }}>
             {isNew ? "Créer le client" : "Enregistrer"}
           </button>

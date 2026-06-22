@@ -445,6 +445,7 @@ export async function enregistrerClient(formData: FormData) {
     contactTelephone: txt("contactTelephone"),
     cibleJoursMensuelle: cibleRaw === "" || Number.isNaN(Number(cibleRaw)) ? null : Number(cibleRaw),
     actif: formData.get("actif") === "on",
+    estStructure: formData.get("estStructure") === "on",
   };
 
   let cid = id;
