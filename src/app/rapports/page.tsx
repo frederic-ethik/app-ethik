@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { MOIS, formatHM, formatHeuresCourt, heureDe } from "@/lib/format";
+import { MOIS, formatHM, heureDe } from "@/lib/format";
 import { validerJoursRapport, genererSynthese } from "@/app/actions";
 import RapportNav from "@/components/RapportNav";
 import SyntheseTable from "@/components/SyntheseTable";
@@ -140,7 +140,12 @@ export default async function RapportsPage({
         </div>
         <button type="submit" style={{ ...field, cursor: "pointer" }}>Afficher</button>
         <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 12, color: "#a5a5a5" }}>PDF / Excel — à venir</span>
+        {client && (
+          <>
+            <a href={`/api/rapport?client=${encodeURIComponent(clientId!)}&annee=${selY}&mois=${selM}`} style={{ fontSize: 14, padding: "10px 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600, background: "#00B0F0", color: "#fff" }}>⬇ PDF</a>
+            <a href={`/api/rapport-excel?client=${encodeURIComponent(clientId!)}&annee=${selY}&mois=${selM}`} style={{ fontSize: 14, padding: "10px 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600, background: "#1D6F42", color: "#fff" }}>⬇ Excel</a>
+          </>
+        )}
       </form>
 
       {!client ? (
@@ -191,7 +196,7 @@ export default async function RapportsPage({
               </div>
             )}
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-end" }}>
-              <div><div style={{ fontSize: 12, color: "#997300" }}>Total heures</div><div style={{ fontSize: 18, fontWeight: 600 }}>{formatHeuresCourt(totalSel)}</div></div>
+              <div><div style={{ fontSize: 12, color: "#997300" }}>Total heures</div><div style={{ fontSize: 18, fontWeight: 600 }}>{formatHM(totalSel)}</div></div>
               <div><div style={{ fontSize: 12, color: "#a5a5a5" }}>Jours travaillés (indicatif)</div><div style={{ fontSize: 18, fontWeight: 600, color: "#a5a5a5" }}>{joursIndic.toLocaleString("fr-FR")} j</div></div>
               <form action={validerJoursRapport} style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
                 <input type="hidden" name="clientId" value={clientId} />
@@ -230,14 +235,14 @@ export default async function RapportsPage({
                       <td style={{ padding: "6px 6px" }}>{heureDe(a.debutAct)}{a.finAct ? `–${heureDe(a.finAct)}` : ""}</td>
                       <td style={{ padding: "6px 6px" }}>{a.missionType ? `${a.missionType.categorie} › ${a.missionType.objet}` : "—"}</td>
                       <td style={{ padding: "6px 6px", color: "#7F7F7F" }}>{a.commentaire ?? ""}</td>
-                      <td style={{ padding: "6px 6px", textAlign: "right" }}>{formatHeuresCourt(a.dureeH)}</td>
+                      <td style={{ padding: "6px 6px", textAlign: "right" }}>{formatHM(a.dureeH)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr style={{ fontWeight: 600 }}>
                     <td colSpan={4} style={{ padding: "8px 6px" }}>Total</td>
-                    <td style={{ padding: "8px 6px", textAlign: "right" }}>{formatHeuresCourt(totalSel)}</td>
+                    <td style={{ padding: "8px 6px", textAlign: "right" }}>{formatHM(totalSel)}</td>
                   </tr>
                 </tfoot>
               </table>

@@ -2,7 +2,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
-import { dureeHeures, parisParts, parisWallDate, formatHeuresCourt, MOIS } from "@/lib/format";
+import { dureeHeures, parisParts, parisWallDate, formatHM, MOIS } from "@/lib/format";
 import { indemniteKm, type Bareme } from "@/lib/bareme";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -197,7 +197,7 @@ export async function genererSynthese(formData: FormData) {
 
   let detail = "";
   for (const [cle, g] of groupes) {
-    detail += `\n## ${cle} (${formatHeuresCourt(g.duree)})\n`;
+    detail += `\n## ${cle} (${formatHM(g.duree)})\n`;
     detail += g.commentaires.length ? g.commentaires.map((c) => `- ${c}`).join("\n") : "- (pas de commentaire détaillé)";
     detail += "\n";
   }
