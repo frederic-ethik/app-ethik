@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { enregistrerClient, enregistrerMissionType, basculerMissionType } from "@/app/actions";
+import { enregistrerClient, enregistrerMissionType, basculerMissionType, enregistrerAccesClient, regenererTokenAcces } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,10 @@ export default async function FicheClientPage({
         include: { missionTypes: { orderBy: [{ actif: "desc" }, { categorie: "asc" }, { objet: "asc" }] } },
       });
   if (!isNew && !client) notFound();
+
+  const h = await headers();
+  const baseUrl = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+  const lienAcces = client?.tokenAcces ? `${baseUrl}/acces/${client.tokenAcces}` : "";
 
   const card = { background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "20px 22px", marginBottom: 20 } as const;
   const cardTitle = { fontSize: 15, fontWeight: 600, color: "#0077a8", margin: "0 0 14px" } as const;
@@ -145,13 +150,13 @@ export default async function FicheClientPage({
           </p>
 
           {/* En-têtes */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 150px 170px", gap: 10, fontSize: 11, color: "#7F7F7F", fontWeight: 600, padding: "0 2px 6px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 150px 170px", gap: 10, fontSize: 11, color: "#7F7F7F", fontWeight: 600, padding: "0 2px 6px" }}>
             <div>Catégorie</div><div>Objet</div><div>Détail</div><div>Facturation</div><div></div>
           </div>
 
           {client!.missionTypes.map((m) => (
             <div key={m.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, opacity: m.actif ? 1 : 0.5 }}>
-              <form action={enregistrerMissionType} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 150px 90px", gap: 10, flex: 1, alignItems: "center" }}>
+              <form action={enregistrerMissionType} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 150px 90px", gap: 10, flex: 1, alignItems: "center", minWidth: 0 }}>
                 <input type="hidden" name="clientId" value={id} />
                 <input type="hidden" name="mid" value={m.id} />
                 <input name="categorie" defaultValue={m.categorie} style={{ ...field, padding: "7px 9px" }} />
@@ -177,7 +182,7 @@ export default async function FicheClientPage({
           ))}
 
           {/* Ajout d'un nouveau type */}
-          <form action={enregistrerMissionType} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 150px 170px", gap: 10, marginTop: 14, paddingTop: 14, borderTop: "1px dashed rgba(0,0,0,.15)", alignItems: "center" }}>
+          <form action={enregistrerMissionType} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 150px 170px", gap: 10, marginTop: 14, paddingTop: 14, borderTop: "1px dashed rgba(0,0,0,.15)", alignItems: "center" }}>
             <input type="hidden" name="clientId" value={id} />
             <input name="categorie" placeholder="Catégorie *" required style={{ ...field, padding: "7px 9px" }} />
             <input name="objet" placeholder="Objet *" required style={{ ...field, padding: "7px 9px" }} />
@@ -191,6 +196,63 @@ export default async function FicheClientPage({
               + Ajouter
             </button>
           </form>
+        </div>
+      )}
+
+      {/* ===== Accès client (lien public lecture seule) ===== */}
+      {!isNew && (
+        <div style={card}>
+          <h2 style={cardTitle}>Accès client (lien de consultation)</h2>
+          <p style={{ fontSize: 13, color: "#7F7F7F", margin: "-8px 0 16px" }}>
+            Donne à ce client un lien sécurisé pour consulter ses rapports mensuels en lecture seule. Tu choisis ce qu&apos;il voit.
+          </p>
+
+          <form action={enregistrerAccesClient}>
+            <input type="hidden" name="id" value={id} />
+            <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "#595959", marginBottom: 14 }}>
+              <input type="checkbox" name="accesActif" defaultChecked={client!.accesActif} style={{ width: 16, height: 16 }} />
+              Activer l&apos;accès en ligne pour ce client
+            </label>
+
+            <p style={{ ...label, marginBottom: 8 }}>Sections visibles par le client</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 22px", marginBottom: 16 }}>
+              {[
+                ["accesSynthese", "Synthèse rédigée", client!.accesSynthese],
+                ["accesTableau", "Tableau de synthèse (par mois)", client!.accesTableau],
+                ["accesDetail", "Détail des activités", client!.accesDetail],
+                ["accesJours", "Jours facturés", client!.accesJours],
+              ].map(([name, lbl, def]) => (
+                <label key={name as string} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#595959" }}>
+                  <input type="checkbox" name={name as string} defaultChecked={def as boolean} style={{ width: 16, height: 16 }} />
+                  {lbl as string}
+                </label>
+              ))}
+            </div>
+            <button type="submit" style={{ fontSize: 14, fontWeight: 600, padding: "10px 18px", borderRadius: 8, background: "#00B0F0", color: "#fff", border: "none", cursor: "pointer" }}>
+              Enregistrer l&apos;accès
+            </button>
+          </form>
+
+          {client!.accesActif && lienAcces && (
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid rgba(0,0,0,.08)" }}>
+              <p style={{ ...label, marginBottom: 6 }}>Lien à transmettre au client</p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <input readOnly value={lienAcces} style={{ ...field, flex: 1, minWidth: 280, fontFamily: "monospace", fontSize: 13, color: "#0077a8" }} />
+                <a href={lienAcces} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, padding: "9px 14px", borderRadius: 8, textDecoration: "none", background: "#eef7ff", color: "#0077a8", border: "1px solid #cfe8fb" }}>
+                  Aperçu ↗
+                </a>
+                <form action={regenererTokenAcces} style={{ display: "inline" }}>
+                  <input type="hidden" name="id" value={id} />
+                  <button type="submit" style={{ fontSize: 13, fontWeight: 600, padding: "9px 14px", borderRadius: 8, background: "none", color: "#b06a00", border: "1px solid #f0d9a0", cursor: "pointer" }}>
+                    Régénérer le lien
+                  </button>
+                </form>
+              </div>
+              <p style={{ fontSize: 12, color: "#a5a5a5", margin: "8px 0 0" }}>
+                Sélectionne le lien pour le copier. « Régénérer » crée un nouveau lien et rend l&apos;ancien inutilisable.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </>

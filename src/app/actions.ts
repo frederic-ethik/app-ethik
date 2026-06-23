@@ -6,6 +6,7 @@ import { dureeHeures, parisParts, parisWallDate, formatHM, MOIS } from "@/lib/fo
 import { indemniteKm, type Bareme } from "@/lib/bareme";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { randomBytes } from "node:crypto";
 
 const MODELE_IA = "claude-sonnet-4-6"; // modèle de rédaction (modifiable)
 
@@ -502,4 +503,49 @@ export async function basculerMissionType(formData: FormData) {
   const m = await prisma.missionType.findUnique({ where: { id }, select: { actif: true } });
   await prisma.missionType.update({ where: { id }, data: { actif: !m?.actif } });
   revalidatePath(`/clients/${clientId}`);
+}
+
+// ===================== ACCÈS CLIENT (lien public en lecture seule) =====================
+
+const nouveauToken = () => randomBytes(16).toString("hex");
+
+// Active/désactive l'accès et enregistre les sections visibles par le client
+export async function enregistrerAccesClient(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const accesActif = formData.get("accesActif") === "on";
+
+  const data: {
+    accesActif: boolean;
+    accesSynthese: boolean;
+    accesTableau: boolean;
+    accesDetail: boolean;
+    accesJours: boolean;
+    tokenAcces?: string;
+  } = {
+    accesActif,
+    accesSynthese: formData.get("accesSynthese") === "on",
+    accesTableau: formData.get("accesTableau") === "on",
+    accesDetail: formData.get("accesDetail") === "on",
+    accesJours: formData.get("accesJours") === "on",
+  };
+
+  // Génère un jeton la première fois qu'on active l'accès
+  if (accesActif) {
+    const c = await prisma.client.findUnique({ where: { id }, select: { tokenAcces: true } });
+    if (!c?.tokenAcces) data.tokenAcces = nouveauToken();
+  }
+
+  await prisma.client.update({ where: { id }, data });
+  revalidatePath(`/clients/${id}`);
+  redirect(`/clients/${id}?saved=1`);
+}
+
+// Régénère le jeton (invalide l'ancien lien)
+export async function regenererTokenAcces(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.client.update({ where: { id }, data: { tokenAcces: nouveauToken() } });
+  revalidatePath(`/clients/${id}`);
+  redirect(`/clients/${id}?saved=1`);
 }

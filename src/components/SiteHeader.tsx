@@ -15,6 +15,7 @@ const LINKS = [
 
 export default function SiteHeader() {
   const path = usePathname();
+  if (path.startsWith("/acces")) return null; // pages publiques (accès client)
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   return (

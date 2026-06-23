@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Props = {
@@ -28,6 +29,7 @@ function elapsed(debutMs: number): string {
 export default function OpenSessionBanner({ id, clientId, debutISO, client, categorie }: Props) {
   const debut = new Date(debutISO).getTime();
   const [chrono, setChrono] = useState("00:00:00");
+  const path = usePathname();
 
   useEffect(() => {
     const tick = () => setChrono(elapsed(debut));
@@ -35,6 +37,9 @@ export default function OpenSessionBanner({ id, clientId, debutISO, client, cate
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
   }, [debut]);
+
+  // Pages publiques (accès client) : pas de bandeau consultant
+  if (path.startsWith("/acces")) return null;
 
   const btn = {
     borderRadius: 8,
