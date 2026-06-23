@@ -54,6 +54,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
   const finMois = new Date(Date.UTC(annee, mois + 1, 1));
   const todayStr = parisParts(now).date;
 
+  // Jours ouvrés du mois affiché (lundi→vendredi ; jours fériés non déduits)
+  let joursOuvres = 0;
+  const dernierJour = new Date(Date.UTC(annee, mois + 1, 0)).getUTCDate();
+  for (let d = 1; d <= dernierJour; d++) {
+    const wd = new Date(Date.UTC(annee, mois, d)).getUTCDay();
+    if (wd >= 1 && wd <= 5) joursOuvres++;
+  }
+
   const [settings, clientsActifs, moisActs] = await Promise.all([
     prisma.settings.findUnique({ where: { id: "singleton" } }),
     prisma.client.findMany({
@@ -113,9 +121,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <h1 style={{ fontSize: 20, fontWeight: 600, color: "#595959", margin: 0 }}>Tableau de bord</h1>
           <Link
-            href="/saisie"
-            title="Saisir une activité"
-            aria-label="Saisir une activité"
+            href="/saisie?mode=badgeage"
+            title="Démarrer un badgeage (chrono)"
+            aria-label="Démarrer un badgeage (chrono)"
             style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: "50%", background: "#00B0F0", color: "#fff", fontSize: 24, fontWeight: 600, textDecoration: "none", lineHeight: 0 }}
           >
             +
@@ -138,7 +146,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
           <Stat label="Aujourd'hui" value={hLabel(heuresAuj)} sub={`${todayActs.length} activité${todayActs.length > 1 ? "s" : ""}`} accent="#FFC000" />
         )}
         <Stat label={`Heures en ${MOIS[mois]}`} value={hLabel(heuresMois)} sub={`${moisActs.length} activités`} accent="#00B0F0" />
-        <Stat label={`Jours travaillés en ${MOIS[mois]}`} value={jLabel(joursMois)} sub="selon la règle des demi-journées" accent="#92D050" />
+        <Stat label={`Jours travaillés en ${MOIS[mois]}`} value={jLabel(joursMois)} sub={`sur ${joursOuvres} jours ouvrés ce mois`} accent="#92D050" />
       </section>
 
       {/* Répartition du mois */}
