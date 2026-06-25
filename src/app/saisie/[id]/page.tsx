@@ -17,7 +17,7 @@ export default async function EditActivitePage({
   const sp = await searchParams;
 
   const [act, clients, types] = await Promise.all([
-    prisma.activity.findUnique({ where: { id }, include: { client: true } }),
+    prisma.activity.findUnique({ where: { id }, include: { client: true, deplacement: { select: { totalFrais: true } } } }),
     prisma.client.findMany({ orderBy: [{ actif: "desc" }, { raisonSociale: "asc" }], select: { id: true, raisonSociale: true, actif: true } }),
     prisma.missionType.findMany({
       orderBy: [{ categorie: "asc" }, { objet: "asc" }],
@@ -40,6 +40,9 @@ export default async function EditActivitePage({
     debut: heureDe(act.debutAct),
     fin: act.finAct ? heureDe(act.finAct) : "",
     commentaire: act.commentaire ?? "",
+    hasDeplacement: act.hasDeplacement,
+    aDesFrais: !!act.deplacement,
+    fraisLabel: act.deplacement ? `${act.deplacement.totalFrais.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €` : "",
   };
 
   return (

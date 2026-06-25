@@ -105,13 +105,13 @@ export default async function JournalPage({
                           {enCours ? <span style={{ color: "#5f8e2a" }}>en cours…</span> : formatHeuresCourt(a.dureeH)}
                         </span>
                         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          {!enCours && (
+                          {!enCours && (a.hasDeplacement || a.deplacement) && (
                             a.deplacement ? (
                               <Link href={`/deplacement/${a.id}`} title="Déplacement rattaché — modifier" style={{ color: "#00B0F0", fontSize: 12, textDecoration: "none" }}>
                                 🚗 {a.deplacement.totalFrais.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €
                               </Link>
                             ) : (
-                              <Link href={`/deplacement/${a.id}`} title="Ajouter un déplacement" style={{ color: "#a5a5a5", fontSize: 13, textDecoration: "none" }}>+ 🚗</Link>
+                              <Link href={`/deplacement/${a.id}`} title="Saisir les frais de déplacement" style={{ color: "#e8a13a", fontSize: 13, textDecoration: "none" }}>🚗 à compléter</Link>
                             )
                           )}
                           {!enCours && (

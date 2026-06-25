@@ -14,6 +14,9 @@ type Edit = {
   debut: string;
   fin: string;
   commentaire: string;
+  hasDeplacement: boolean;
+  aDesFrais?: boolean;
+  fraisLabel?: string;
 };
 
 export default function SaisieForm({
@@ -47,6 +50,7 @@ export default function SaisieForm({
   const [missionTypeId, setMissionTypeId] = useState(edit?.missionTypeId ?? "");
   const [debut, setDebut] = useState(edit?.debut || initialDebut || "09:00");
   const [fin, setFin] = useState(edit?.fin || initialDebut || "10:00");
+  const [marqueDepl, setMarqueDepl] = useState(edit?.hasDeplacement ?? false);
   const formRef = useRef<HTMLFormElement>(null);
   const started = useRef(false);
 
@@ -237,10 +241,36 @@ export default function SaisieForm({
             </>
           )}
 
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 14 }}>
             <label style={label}>Commentaire</label>
             <textarea name="commentaire" rows={2} defaultValue={edit?.commentaire ?? ""} placeholder="Décrivez ce que vous avez fait…" style={{ ...field, resize: "vertical" }} />
           </div>
+
+          <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "#595959", background: "#f2f4f5", borderRadius: 8, padding: "10px 12px", marginBottom: edit?.aDesFrais && !marqueDepl ? 8 : 16, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              name="hasDeplacement"
+              checked={marqueDepl}
+              onChange={(e) => {
+                const coche = e.target.checked;
+                if (!coche && edit?.aDesFrais) {
+                  const ok = window.confirm(
+                    `Cette activité a des frais de déplacement enregistrés (${edit.fraisLabel}).\n\n` +
+                      `En décochant cette case puis en enregistrant, ces frais seront définitivement supprimés.\n\nVoulez-vous continuer ?`
+                  );
+                  if (!ok) return; // on garde la case cochée
+                }
+                setMarqueDepl(coche);
+              }}
+              style={{ width: 16, height: 16 }}
+            />
+            <span>🚗 Frais de déplacement à saisir <span style={{ color: "#7F7F7F" }}>(la voiture apparaîtra dans le journal pour compléter les frais plus tard)</span></span>
+          </label>
+          {edit?.aDesFrais && !marqueDepl && (
+            <div style={{ fontSize: 12.5, color: "#b06a00", background: "#fff6e0", border: "1px solid #f0d9a0", borderRadius: 8, padding: "8px 12px", marginBottom: 16 }}>
+              ⚠ Des frais sont enregistrés ({edit.fraisLabel}). En l&apos;état, ils seront <b>supprimés</b> à l&apos;enregistrement. Recochez la case pour les conserver.
+            </div>
+          )}
 
           <button type="submit" style={primaryBtn}>{submitLabel ?? defaultLabel}</button>
           {!isEdit && (

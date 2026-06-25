@@ -33,7 +33,7 @@ export async function createActivite(formData: FormData) {
       clientId,
       missionTypeId: missionTypeId || null,
       commentaire: commentaire || null,
-      hasDeplacement: false,
+      hasDeplacement: formData.get("hasDeplacement") === "on",
     },
   });
 
@@ -101,6 +101,7 @@ export async function finaliserActivite(formData: FormData) {
       clientId,
       missionTypeId: missionTypeId || null,
       commentaire: commentaire || null,
+      hasDeplacement: formData.get("hasDeplacement") === "on",
     },
   });
 
@@ -124,6 +125,8 @@ export async function updateActivite(formData: FormData) {
     throw new Error("Merci de renseigner la date, le client et les heures de début et de fin.");
   }
 
+  const hasDeplacement = formData.get("hasDeplacement") === "on";
+
   await prisma.activity.update({
     where: { id },
     data: {
@@ -134,8 +137,13 @@ export async function updateActivite(formData: FormData) {
       clientId,
       missionTypeId: missionTypeId || null,
       commentaire: commentaire || null,
+      hasDeplacement,
     },
   });
+
+  // Si on retire le marqueur alors que des frais avaient été saisis, on supprime le déplacement
+  // pour éviter des frais "cachés" (la voiture n'apparaît plus dans le journal).
+  if (!hasDeplacement) await prisma.deplacement.deleteMany({ where: { activityId: id } });
 
   revalidatePath("/journal");
   revalidatePath("/");
