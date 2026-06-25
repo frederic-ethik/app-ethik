@@ -141,7 +141,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
       </div>
 
       {/* Aujourd'hui + ce mois */}
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 22 }}>
+      <section style={{ display: "grid", gap: 14, marginBottom: 22, gridTemplateColumns: `repeat(${estMoisCourant ? 3 : 2}, minmax(0, 1fr))` }}>
         {estMoisCourant && (
           <Stat label="Aujourd'hui" value={hLabel(heuresAuj)} sub={`${todayActs.length} activité${todayActs.length > 1 ? "s" : ""}`} accent="#FFC000" />
         )}
@@ -151,7 +151,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
 
       {/* Répartition du mois */}
       <h2 style={h2}>Répartition du mois</h2>
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 24 }}>
+      <section style={{ display: "grid", gap: 14, marginBottom: 24, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
         <Brique titre="Facturable" h={bF.h} j={bF.j} pct={bF.pct} accent="#92D050" />
         <Brique titre="Fonctionnement (E&C)" h={bG.h} j={bG.j} pct={bG.pct} accent="#00B0F0" />
         <Brique titre="Bénévolat" h={bN.h} j={bN.j} pct={bN.pct} accent="#FFC000" />
