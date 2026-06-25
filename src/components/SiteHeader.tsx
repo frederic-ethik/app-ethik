@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { deconnexion } from "@/app/actions-auth";
 
 const LINKS = [
   { href: "/", label: "Tableau de bord" },
@@ -15,7 +16,7 @@ const LINKS = [
 
 export default function SiteHeader() {
   const path = usePathname();
-  if (path.startsWith("/acces")) return null; // pages publiques (accès client)
+  if (path.startsWith("/acces") || path.startsWith("/login")) return null; // pages publiques
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   return (
@@ -53,6 +54,15 @@ export default function SiteHeader() {
           </Link>
         ))}
       </nav>
+      <form action={deconnexion} style={{ marginLeft: "auto" }}>
+        <button
+          type="submit"
+          title="Se déconnecter"
+          style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(0,0,0,.15)", background: "#fff", color: "#7F7F7F", cursor: "pointer" }}
+        >
+          Déconnexion
+        </button>
+      </form>
     </header>
   );
 }

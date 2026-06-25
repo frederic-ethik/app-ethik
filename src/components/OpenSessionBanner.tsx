@@ -38,8 +38,8 @@ export default function OpenSessionBanner({ id, clientId, debutISO, client, cate
     return () => clearInterval(t);
   }, [debut]);
 
-  // Pages publiques (accès client) : pas de bandeau consultant
-  if (path.startsWith("/acces")) return null;
+  // Pages publiques (accès client, login) : pas de bandeau consultant
+  if (path.startsWith("/acces") || path.startsWith("/login")) return null;
 
   const btn = {
     borderRadius: 8,

@@ -1,0 +1,31 @@
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { verifierJeton, COOKIE_SESSION } from "@/lib/auth";
+
+// Routes publiques : login + accès client (lecture seule par jeton)
+const PUBLIQUES = ["/login", "/acces"];
+
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  if (PUBLIQUES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    return NextResponse.next();
+  }
+
+  const token = req.cookies.get(COOKIE_SESSION)?.value;
+  const session = token ? await verifierJeton(token) : null;
+
+  if (!session) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    if (pathname !== "/") url.searchParams.set("from", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
+}
+
+// On exécute le middleware partout sauf les fichiers statiques
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|.*\\.png$).*)"],
+};
