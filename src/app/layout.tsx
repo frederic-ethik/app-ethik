@@ -1,5 +1,5 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import SiteHeader from "@/components/SiteHeader";
 import OpenSessionBanner from "@/components/OpenSessionBanner";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +7,13 @@ import { prisma } from "@/lib/prisma";
 export const metadata: Metadata = {
   title: "Ethik & Co — Temps & frais",
   description: "Gestion des temps et des frais de déplacement",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "Ethik Badge", statusBarStyle: "default" },
+  icons: { apple: "/apple-touch-icon.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#00B0F0",
 };
 
 export default async function RootLayout({

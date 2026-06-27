@@ -16,7 +16,7 @@ const LINKS = [
 
 export default function SiteHeader() {
   const path = usePathname();
-  if (path.startsWith("/acces") || path.startsWith("/login")) return null; // pages publiques
+  if (path.startsWith("/acces") || path.startsWith("/login") || path.startsWith("/badge")) return null; // pages plein écran / publiques
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   return (

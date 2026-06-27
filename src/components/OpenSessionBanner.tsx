@@ -38,8 +38,8 @@ export default function OpenSessionBanner({ id, clientId, debutISO, client, cate
     return () => clearInterval(t);
   }, [debut]);
 
-  // Pages publiques (accès client, login) : pas de bandeau consultant
-  if (path.startsWith("/acces") || path.startsWith("/login")) return null;
+  // Pages publiques / plein écran : pas de bandeau (le badgeage a son propre affichage)
+  if (path.startsWith("/acces") || path.startsWith("/login") || path.startsWith("/badge")) return null;
 
   const btn = {
     borderRadius: 8,
