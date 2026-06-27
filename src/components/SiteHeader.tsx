@@ -88,6 +88,13 @@ export default function SiteHeader() {
               gap: 2,
             }}
           >
+            <Link
+              href="/badge"
+              onClick={() => setOpen(false)}
+              style={{ fontSize: 15, fontWeight: 600, padding: "11px 14px", borderRadius: 8, textDecoration: "none", color: "#0077a8", background: "#e0f5fe", display: "block", marginBottom: 4 }}
+            >
+              ⏱ Badgeage (saisie directe)
+            </Link>
             {LINKS.map((l) => (
               <Link key={l.href} href={l.href} onClick={() => setOpen(false)} style={{ ...linkStyle(isActive(l.href)), fontSize: 15, padding: "11px 14px" }}>
                 {l.label}
