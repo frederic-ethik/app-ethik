@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { heureDe } from "@/lib/format";
 import { badgeDemarrer } from "@/app/badge/actions";
 import BadgeEnCours from "@/components/BadgeEnCours";
+import BadgeClientButton from "@/components/BadgeClientButton";
 
 export const dynamic = "force-dynamic";
 
@@ -75,13 +76,7 @@ export default async function BadgePage({ searchParams }: { searchParams: Promis
                 <form key={c.id} action={badgeDemarrer}>
                   <input type="hidden" name="clientId" value={c.id} />
                   {depuis && <input type="hidden" name="depuis" value={depuis} />}
-                  <button
-                    type="submit"
-                    style={{ width: "100%", textAlign: "left", padding: "16px 18px", borderRadius: 12, border: "1px solid rgba(0,0,0,.12)", background: "#fff", color: "#595959", fontSize: 16, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                  >
-                    <span>{c.raisonSociale}</span>
-                    <span style={{ color: "#00B0F0", fontSize: 20 }}>▶</span>
-                  </button>
+                  <BadgeClientButton nom={c.raisonSociale} />
                 </form>
               ))}
             </div>
