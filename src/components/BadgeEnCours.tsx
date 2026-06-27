@@ -72,12 +72,21 @@ export default function BadgeEnCours({
             <b style={{ color: "#595959" }}>Détail :</b> {detail}
           </div>
         )}
-        <div style={{ marginBottom: 18 }}>
+        <div style={{ marginBottom: 14 }}>
           <label style={label}>Commentaire</label>
           <textarea name="commentaire" rows={3} placeholder="Ce que vous avez fait…" style={{ ...field, resize: "vertical" }} />
         </div>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, color: "#595959", background: "#f2f4f5", borderRadius: 10, padding: "12px 14px", marginBottom: 16, cursor: "pointer" }}>
+          <input type="checkbox" name="hasDeplacement" style={{ width: 18, height: 18 }} />
+          <span>🚗 Frais de déplacement à saisir</span>
+        </label>
+
         <button type="submit" style={{ width: "100%", padding: "16px", borderRadius: 12, border: "none", background: "linear-gradient(90deg,#92D050,#7cbf3f)", color: "#fff", fontSize: 18, fontWeight: 700, cursor: "pointer" }}>
           ⏹ Terminer et enregistrer
+        </button>
+        <button type="submit" name="enchainer" value="1" style={{ width: "100%", marginTop: 10, padding: "14px", borderRadius: 12, border: "1px solid #92D050", background: "#fff", color: "#5f8e2a", fontSize: 16, fontWeight: 700, cursor: "pointer" }}>
+          ⏭ Terminer et enchaîner
         </button>
       </form>
 

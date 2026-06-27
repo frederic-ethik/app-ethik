@@ -6,8 +6,9 @@ import BadgeEnCours from "@/components/BadgeEnCours";
 
 export const dynamic = "force-dynamic";
 
-export default async function BadgePage({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
+export default async function BadgePage({ searchParams }: { searchParams: Promise<{ ok?: string; depuis?: string }> }) {
   const sp = await searchParams;
+  const depuis = sp.depuis ?? "";
 
   const session = await prisma.activity.findFirst({
     where: { finAct: null },
@@ -48,6 +49,11 @@ export default async function BadgePage({ searchParams }: { searchParams: Promis
           ✓ Activité enregistrée.
         </div>
       )}
+      {depuis && !session && (
+        <div style={{ background: "#e0f5fe", color: "#0077a8", borderRadius: 10, padding: "11px 14px", fontSize: 14, marginBottom: 16, textAlign: "center" }}>
+          ✓ Enregistrée — choisissez le client suivant <b>(le temps continue sans coupure)</b>.
+        </div>
+      )}
 
       {session ? (
         <BadgeEnCours
@@ -68,6 +74,7 @@ export default async function BadgePage({ searchParams }: { searchParams: Promis
               {clients.map((c) => (
                 <form key={c.id} action={badgeDemarrer}>
                   <input type="hidden" name="clientId" value={c.id} />
+                  {depuis && <input type="hidden" name="depuis" value={depuis} />}
                   <button
                     type="submit"
                     style={{ width: "100%", textAlign: "left", padding: "16px 18px", borderRadius: 12, border: "1px solid rgba(0,0,0,.12)", background: "#fff", color: "#595959", fontSize: 16, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}
