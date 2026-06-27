@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifierJeton, COOKIE_SESSION } from "@/lib/auth";
 
-// Routes publiques : login + accès client (lecture seule par jeton)
-const PUBLIQUES = ["/login", "/acces"];
+// Routes publiques : login + accès client (lecture seule par jeton) + manifeste PWA
+// (le manifeste doit être lisible sans connexion, sinon le navigateur ne trouve pas l'icône d'installation)
+const PUBLIQUES = ["/login", "/acces", "/manifest.webmanifest"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
