@@ -24,14 +24,13 @@ export default function ReglesDemiJournee({
   const [ad, setAd] = useState(apremDebut);
   const [se, setSe] = useState(seuil);
 
-  const row = { display: "grid", gridTemplateColumns: "200px 1fr 90px", alignItems: "center", gap: 14, marginBottom: 16 } as const;
   const lbl = { fontSize: 13, color: "#595959" } as const;
   const val = { fontSize: 15, fontWeight: 600, color: "#0077a8", textAlign: "right" as const };
   const slider = { width: "100%", accentColor: "#00B0F0" } as const;
 
   return (
     <div>
-      <div style={row}>
+      <div className="demij-row">
         <div>
           <div style={lbl}>Fin de la plage du matin</div>
           <div style={{ fontSize: 11, color: "#a5a5a5" }}>Le matin = avant cette heure</div>
@@ -40,7 +39,7 @@ export default function ReglesDemiJournee({
         <div style={val}>{minToHHMM(mf)}</div>
       </div>
 
-      <div style={row}>
+      <div className="demij-row">
         <div>
           <div style={lbl}>Début de la plage de l&apos;après-midi</div>
           <div style={{ fontSize: 11, color: "#a5a5a5" }}>L&apos;après-midi = après cette heure</div>
@@ -49,7 +48,7 @@ export default function ReglesDemiJournee({
         <div style={val}>{minToHHMM(ad)}</div>
       </div>
 
-      <div style={row}>
+      <div className="demij-row">
         <div>
           <div style={lbl}>Seuil d&apos;une demi-journée</div>
           <div style={{ fontSize: 11, color: "#a5a5a5" }}>Temps mini à dépasser dans une plage</div>

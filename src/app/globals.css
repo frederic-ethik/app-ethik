@@ -51,6 +51,25 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Réglages — lignes de curseurs (libellé | curseur | valeur) : empilées sur petit écran */
+.demij-row {
+  display: grid;
+  grid-template-columns: 200px 1fr 90px;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+@media (max-width: 560px) {
+  .demij-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 8px;
+  }
+  .demij-row > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Navigation : bascule bureau / menu mobile (sandwich) */
 .nav-desktop {
   display: flex;
