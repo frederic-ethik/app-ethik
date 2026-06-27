@@ -24,3 +24,48 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ===================== Responsive (passe mobile) ===================== */
+
+/* Grilles de tuiles : 3 (ou 2) colonnes qui rétrécissent, empilées sur petit écran */
+.tiles3 {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.tiles2 {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 640px) {
+  .tiles3,
+  .tiles2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tableaux : défilement horizontal sur petit écran plutôt qu'un débordement de page */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Navigation : bascule bureau / menu mobile (sandwich) */
+.nav-desktop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.nav-burger {
+  display: none;
+}
+@media (max-width: 760px) {
+  .nav-desktop {
+    display: none;
+  }
+  .nav-burger {
+    display: block;
+  }
+}

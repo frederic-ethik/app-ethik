@@ -141,7 +141,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
       </div>
 
       {/* Aujourd'hui + ce mois */}
-      <section style={{ display: "grid", gap: 14, marginBottom: 22, gridTemplateColumns: `repeat(${estMoisCourant ? 3 : 2}, minmax(0, 1fr))` }}>
+      <section className={estMoisCourant ? "tiles3" : "tiles2"} style={{ marginBottom: 22 }}>
         {estMoisCourant && (
           <Stat label="Aujourd'hui" value={hLabel(heuresAuj)} sub={`${todayActs.length} activité${todayActs.length > 1 ? "s" : ""}`} accent="#FFC000" />
         )}
@@ -151,7 +151,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
 
       {/* Répartition du mois */}
       <h2 style={h2}>Répartition du mois</h2>
-      <section style={{ display: "grid", gap: 14, marginBottom: 24, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+      <section className="tiles3" style={{ marginBottom: 24 }}>
         <Brique titre="Facturable" h={bF.h} j={bF.j} pct={bF.pct} accent="#92D050" />
         <Brique titre="Fonctionnement (E&C)" h={bG.h} j={bG.j} pct={bG.pct} accent="#00B0F0" />
         <Brique titre="Bénévolat" h={bN.h} j={bN.j} pct={bN.pct} accent="#FFC000" />
@@ -191,7 +191,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
         {recentes.length === 0 ? (
           <p style={{ fontSize: 14, color: "#7F7F7F" }}>Rien à afficher pour le moment.</p>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="table-scroll">
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 460 }}>
             <thead>
               <tr style={{ textAlign: "left", color: "#7F7F7F", fontSize: 12 }}>
                 <th style={th}>Date</th><th style={th}>Client</th><th style={th}>Catégorie</th>
@@ -209,6 +210,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
     </>
