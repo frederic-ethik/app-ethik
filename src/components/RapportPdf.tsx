@@ -94,8 +94,8 @@ function RapportDoc({ data, logo }: { data: RapportData; logo: Buffer | null }) 
           const focus = data.histoMoisIsFocus.slice(0, N);
           const typeW = "34%";
           const moisW = `${(66 / N).toFixed(3)}%`;
-          const hl = (i: number) => (focus[i] ? { backgroundColor: "#eef9ff" } : null);
-          const hlHead = (i: number) => (focus[i] ? { backgroundColor: "#0077a8" } : null);
+          const hl = (i: number) => (focus[i] ? { backgroundColor: "#eef9ff" } : {});
+          const hlHead = (i: number) => (focus[i] ? { backgroundColor: "#0077a8" } : {});
           return (
             <View wrap={false}>
               <Text style={s.secTitle}>Répartition par type de mission{tronque ? " — 6 derniers mois" : ""}</Text>
