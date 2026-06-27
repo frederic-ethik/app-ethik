@@ -218,7 +218,8 @@ export default async function RapportsPage({
             {detail.length === 0 ? (
               <p style={{ fontSize: 14, color: "#a5a5a5" }}>Aucune activité ce mois-ci.</p>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <div className="table-scroll">
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
                 <thead>
                   <tr style={{ color: "#7F7F7F", textAlign: "left" }}>
                     <th style={{ padding: "6px 6px", fontWeight: 600 }}>Date</th>
@@ -246,6 +247,7 @@ export default async function RapportsPage({
                   </tr>
                 </tfoot>
               </table>
+              </div>
             )}
           </div>
 
