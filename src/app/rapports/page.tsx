@@ -4,8 +4,8 @@ import { validerJoursRapport, genererSynthese } from "@/app/actions";
 import RapportNav from "@/components/RapportNav";
 import SyntheseTable from "@/components/SyntheseTable";
 import SyntheseClient from "@/components/SyntheseClient";
-import CalendrierDemiJournees from "@/components/CalendrierDemiJournees";
-import { totalDemiJournees, demiJourneesDetailParJour, REGLE_DEMI_J_DEFAUT, type ActivitePlage, type RegleDemiJournee, type DemiJourneeJour } from "@/lib/demi-journees";
+import CalendrierDetailMois, { type ActiviteDetail } from "@/components/CalendrierDetailMois";
+import { totalDemiJournees, demiJourneesDetailParJour, repartirPlage, REGLE_DEMI_J_DEFAUT, type ActivitePlage, type RegleDemiJournee, type DemiJourneeJour } from "@/lib/demi-journees";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +125,23 @@ export default async function RapportsPage({
   const moyFacturee = joursFactures ? totalSel / joursFactures : null;
   const synthese = rapports.find((r) => r.annee === selY && r.mois === selM)?.syntheseValidee ?? "";
   const detail = acts.filter((a) => `${a.dateAct.getUTCFullYear()}-${pad(a.dateAct.getUTCMonth() + 1)}` === selKey);
+  const activitesDetail: ActiviteDetail[] = detail.map((a) => {
+    const debutMin = a.debutAct.getUTCHours() * 60 + a.debutAct.getUTCMinutes();
+    const finMin = a.finAct ? a.finAct.getUTCHours() * 60 + a.finAct.getUTCMinutes() : debutMin;
+    const rep = a.finAct ? repartirPlage(debutMin, finMin, regleDemiJ) : { matin: 0, aprem: 0 };
+    return {
+      key: a.id,
+      day: a.dateAct.getUTCDate(),
+      dateLabel: a.dateAct.toLocaleDateString("fr-FR"),
+      horaire: `${heureDe(a.debutAct)}${a.finAct ? `–${heureDe(a.finAct)}` : ""}`,
+      type: a.missionType ? `${a.missionType.categorie} › ${a.missionType.objet}` : "—",
+      commentaire: a.commentaire ?? "",
+      dureeLabel: formatHM(a.dureeH),
+      duree: a.dureeH,
+      aMatin: rep.matin > 0,
+      aAprem: rep.aprem > 0,
+    };
+  });
 
   const field = { fontSize: 14, padding: "8px 10px", border: "1px solid rgba(0,0,0,.2)", borderRadius: 8, background: "#fff", color: "#595959" } as const;
   const card = { background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "18px 20px", marginBottom: 22 } as const;
@@ -197,6 +214,26 @@ export default async function RapportsPage({
             </p>
           </div>
 
+          {/* Partie C — Synthèse rédigée par l'IA (remontée juste après le tableau de synthèse) */}
+          <div style={card}>
+            <p style={partTitle}>C · Synthèse rédigée par l&apos;IA (Claude)</p>
+            {synthese ? (
+              <SyntheseClient clientId={clientId!} annee={selY} mois={selM} initial={synthese} />
+            ) : (
+              <form action={genererSynthese}>
+                <input type="hidden" name="clientId" value={clientId} />
+                <input type="hidden" name="annee" value={selY} />
+                <input type="hidden" name="mois" value={selM} />
+                <p style={{ fontSize: 13, color: "#7F7F7F", margin: "0 0 12px" }}>
+                  ✨ Génère un résumé narratif du mois à partir de vos commentaires, à corriger puis copier-coller dans votre email au client.
+                </p>
+                <button type="submit" style={{ fontSize: 14, padding: "10px 16px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#92D050,#7cbf3f)", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+                  ✨ Générer la synthèse
+                </button>
+              </form>
+            )}
+          </div>
+
           {/* Facturation du mois sélectionné — jours réellement facturés (mémorisés) */}
           <div style={{ ...card, background: "#fff6e0", borderColor: "#FFC000" }}>
             <p style={partTitle}>Facturation — {MOIS[selM - 1]} {selY}</p>
@@ -222,73 +259,14 @@ export default async function RapportsPage({
             </div>
           </div>
 
-          {/* Calendrier des demi-journées théoriques (aide interne, non partagé au client) */}
-          <div style={card}>
-            <p style={partTitle}>Calendrier des demi-journées (indicatif) — {MOIS[selM - 1]} {selY}</p>
-            <p style={{ fontSize: 12, color: "#a5a5a5", margin: "0 0 14px" }}>
-              Ce que le compteur propose de comptabiliser, jour par jour, pour t&apos;aider à valider les jours facturés. Indicateur interne — jamais visible par le client.
-            </p>
-            <CalendrierDemiJournees annee={selY} mois={selM} jours={joursCalendrier} />
-          </div>
-
-          {/* Partie B — Détail des activités du mois sélectionné */}
-          <div style={card}>
-            <p style={partTitle}>B · Détail des activités — {MOIS[selM - 1]} {selY}</p>
-            {detail.length === 0 ? (
-              <p style={{ fontSize: 14, color: "#a5a5a5" }}>Aucune activité ce mois-ci.</p>
-            ) : (
-              <div className="table-scroll">
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
-                <thead>
-                  <tr style={{ color: "#7F7F7F", textAlign: "left" }}>
-                    <th style={{ padding: "6px 6px", fontWeight: 600 }}>Date</th>
-                    <th style={{ padding: "6px 6px", fontWeight: 600 }}>Horaire</th>
-                    <th style={{ padding: "6px 6px", fontWeight: 600 }}>Catégorie › Objet</th>
-                    <th style={{ padding: "6px 6px", fontWeight: 600 }}>Commentaire</th>
-                    <th style={{ padding: "6px 6px", fontWeight: 600, textAlign: "right" }}>Durée</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.map((a) => (
-                    <tr key={a.id} style={{ borderTop: "1px solid rgba(0,0,0,.06)" }}>
-                      <td style={{ padding: "6px 6px" }}>{a.dateAct.toLocaleDateString("fr-FR")}</td>
-                      <td style={{ padding: "6px 6px" }}>{heureDe(a.debutAct)}{a.finAct ? `–${heureDe(a.finAct)}` : ""}</td>
-                      <td style={{ padding: "6px 6px" }}>{a.missionType ? `${a.missionType.categorie} › ${a.missionType.objet}` : "—"}</td>
-                      <td style={{ padding: "6px 6px", color: "#7F7F7F" }}>{a.commentaire ?? ""}</td>
-                      <td style={{ padding: "6px 6px", textAlign: "right" }}>{formatHM(a.dureeH)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr style={{ fontWeight: 600 }}>
-                    <td colSpan={4} style={{ padding: "8px 6px" }}>Total</td>
-                    <td style={{ padding: "8px 6px", textAlign: "right" }}>{formatHM(totalSel)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-              </div>
-            )}
-          </div>
-
-          {/* Partie C — Synthèse rédigée par l'IA */}
-          <div style={card}>
-            <p style={partTitle}>C · Synthèse rédigée par l&apos;IA (Claude)</p>
-            {synthese ? (
-              <SyntheseClient clientId={clientId!} annee={selY} mois={selM} initial={synthese} />
-            ) : (
-              <form action={genererSynthese}>
-                <input type="hidden" name="clientId" value={clientId} />
-                <input type="hidden" name="annee" value={selY} />
-                <input type="hidden" name="mois" value={selM} />
-                <p style={{ fontSize: 13, color: "#7F7F7F", margin: "0 0 12px" }}>
-                  ✨ Génère un résumé narratif du mois à partir de vos commentaires, à corriger puis copier-coller dans votre email au client.
-                </p>
-                <button type="submit" style={{ fontSize: 14, padding: "10px 16px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#92D050,#7cbf3f)", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
-                  ✨ Générer la synthèse
-                </button>
-              </form>
-            )}
-          </div>
+          {/* Calendrier des demi-journées + détail filtrable (aide interne, non partagé au client) */}
+          <CalendrierDetailMois
+            annee={selY}
+            mois={selM}
+            moisLabel={`${MOIS[selM - 1]} ${selY}`}
+            jours={joursCalendrier}
+            activites={activitesDetail}
+          />
         </>
       )}
     </>

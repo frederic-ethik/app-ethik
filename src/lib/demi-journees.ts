@@ -50,8 +50,14 @@ function repartir(debut: number, fin: number, r: RegleDemiJournee): { matin: num
   return { matin, aprem };
 }
 
-// Détail par jour : quelles demi-journées (matin / après-midi) sont comptées
-export type DemiJourneeJour = { matin: boolean; aprem: boolean };
+// Répartition matin / après-midi (en minutes) d'une plage isolée — utile pour situer une activité.
+export function repartirPlage(debutMin: number, finMin: number, r: RegleDemiJournee): { matin: number; aprem: number } {
+  if (finMin <= debutMin) return { matin: 0, aprem: 0 };
+  return repartir(debutMin, finMin, r);
+}
+
+// Détail par jour : minutes cumulées et demi-journées comptées (matin / après-midi)
+export type DemiJourneeJour = { matinMin: number; apremMin: number; matin: boolean; aprem: boolean };
 export function demiJourneesDetailParJour(plages: ActivitePlage[], r: RegleDemiJournee): Map<string, DemiJourneeJour> {
   const cumul = new Map<string, { matin: number; aprem: number }>();
   for (const p of plages) {
@@ -63,7 +69,9 @@ export function demiJourneesDetailParJour(plages: ActivitePlage[], r: RegleDemiJ
     cumul.set(p.jour, g);
   }
   const res = new Map<string, DemiJourneeJour>();
-  for (const [jour, g] of cumul) res.set(jour, { matin: g.matin > r.seuilMin, aprem: g.aprem > r.seuilMin });
+  for (const [jour, g] of cumul) {
+    res.set(jour, { matinMin: g.matin, apremMin: g.aprem, matin: g.matin > r.seuilMin, aprem: g.aprem > r.seuilMin });
+  }
   return res;
 }
 
