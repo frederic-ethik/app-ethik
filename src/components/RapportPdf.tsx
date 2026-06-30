@@ -86,16 +86,19 @@ function RapportDoc({ data, logo }: { data: RapportData; logo: Buffer | null }) 
           </View>
         )}
 
-        {/* Répartition par type de mission — mois en colonnes (max 6 mois récents) */}
+        {/* Répartition par type de mission — mois en colonnes (+ Total période en mode période) */}
         {data.historiqueTypes.length > 0 && (() => {
-          const N = Math.min(6, data.histoMoisLabelsCourts.length);
-          const tronque = data.histoMoisLabelsCourts.length > N;
-          const mois = data.histoMoisLabelsCourts.slice(0, N); // anti-chrono : mois du rapport en premier
+          const periode = data.mode === "periode";
+          const N = periode ? data.histoMoisLabelsCourts.length : Math.min(6, data.histoMoisLabelsCourts.length);
+          const tronque = !periode && data.histoMoisLabelsCourts.length > N;
+          const mois = data.histoMoisLabelsCourts.slice(0, N); // mensuel : anti-chrono ; période : chrono
           const focus = data.histoMoisIsFocus.slice(0, N);
           const typeW = "34%";
-          const moisW = `${(66 / N).toFixed(3)}%`;
+          const nCols = N + (periode ? 1 : 0);
+          const moisW = `${(66 / nCols).toFixed(3)}%`;
           const hl = (i: number) => (focus[i] ? { backgroundColor: "#eef9ff" } : {});
           const hlHead = (i: number) => (focus[i] ? { backgroundColor: "#0077a8" } : {});
+          const totHl = { backgroundColor: "#eef9ff" };
           return (
             <View wrap={false}>
               <Text style={s.secTitle}>Répartition par type de mission{tronque ? " — 6 derniers mois" : ""}</Text>
@@ -104,6 +107,7 @@ function RapportDoc({ data, logo }: { data: RapportData; logo: Buffer | null }) 
                 {mois.map((m, i) => (
                   <Text key={i} style={[s.th, { width: moisW, textAlign: "right" }, hlHead(i)]}>{m}</Text>
                 ))}
+                {periode && <Text style={[s.th, { width: moisW, textAlign: "right" }]}>Total</Text>}
               </View>
               {data.historiqueTypes.map((t, i) => (
                 <View style={{ flexDirection: "row" }} key={i} wrap={false}>
@@ -111,6 +115,7 @@ function RapportDoc({ data, logo }: { data: RapportData; logo: Buffer | null }) 
                   {t.heuresLabels.slice(0, N).map((h, j) => (
                     <Text key={j} style={[s.td, { width: moisW }, s.right, hl(j)]}>{h}</Text>
                   ))}
+                  {periode && <Text style={[s.td, { width: moisW }, s.right, totHl, { fontFamily: "Helvetica-Bold" }]}>{t.totalLabel}</Text>}
                 </View>
               ))}
               <View style={{ flexDirection: "row" }}>
@@ -118,18 +123,21 @@ function RapportDoc({ data, logo }: { data: RapportData; logo: Buffer | null }) 
                 {data.histoTotauxHeures.slice(0, N).map((h, j) => (
                   <Text key={j} style={[s.tot, { width: moisW }, s.right, hl(j)]}>{h}</Text>
                 ))}
+                {periode && <Text style={[s.tot, { width: moisW }, s.right, totHl]}>{data.histoGrandTotalLabel}</Text>}
               </View>
               <View style={{ flexDirection: "row" }}>
                 <Text style={[s.tot, { width: typeW }]}>Jours facturés</Text>
                 {data.histoJoursFactures.slice(0, N).map((j, k) => (
                   <Text key={k} style={[s.tot, { width: moisW }, s.right, hl(k)]}>{j != null ? j.toLocaleString("fr-FR") : "—"}</Text>
                 ))}
+                {periode && <Text style={[s.tot, { width: moisW }, s.right, totHl]}>{data.joursPeriode != null ? data.joursPeriode.toLocaleString("fr-FR") : "—"}</Text>}
               </View>
               <View style={{ flexDirection: "row" }}>
                 <Text style={[s.tot, { width: typeW }]}>Moy. / jour facturé</Text>
                 {data.histoMoyennes.slice(0, N).map((m, k) => (
                   <Text key={k} style={[s.tot, { width: moisW }, s.right, hl(k)]}>{m}</Text>
                 ))}
+                {periode && <Text style={[s.tot, { width: moisW }, s.right, totHl]}>{data.moyennePeriodeLabel}</Text>}
               </View>
               <View style={{ height: 10 }} />
             </View>

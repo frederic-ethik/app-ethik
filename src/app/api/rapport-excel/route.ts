@@ -1,20 +1,13 @@
 import ExcelJS from "exceljs";
-import { getRapportData } from "@/lib/rapport-data";
+import { getRapportData, getRapportPeriodeData, type RapportData } from "@/lib/rapport-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const BLEU = "FF00B0F0";
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const client = url.searchParams.get("client") ?? "";
-  const annee = Number(url.searchParams.get("annee"));
-  const mois = Number(url.searchParams.get("mois"));
-  if (!client || !annee || !mois) return new Response("Paramètres manquants", { status: 400 });
-
-  const data = await getRapportData(client, annee, mois);
-
+async function buildWorkbook(data: RapportData): Promise<Buffer> {
+  const periode = data.mode === "periode";
   const wb = new ExcelJS.Workbook();
 
   // ===================== Feuille « Rapport » =====================
@@ -44,9 +37,10 @@ export async function GET(req: Request) {
     ws.addRow([]);
   }
 
-  // Répartition par type de mission — mois en colonnes (toute la profondeur d'historique)
+  // Répartition par type de mission — mois en colonnes + colonne « Total » / « Total période »
   ws.addRow(["Répartition par type de mission"]).font = { bold: true };
-  const head = ws.addRow(["Catégorie › Objet", ...data.histoMoisLabels, "Total"]);
+  const totalHeader = periode ? "Total période" : "Total";
+  const head = ws.addRow(["Catégorie › Objet", ...data.histoMoisLabels, totalHeader]);
   head.eachCell((c) => {
     c.font = { bold: true, color: { argb: "FFFFFFFF" } };
     c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLEU } };
@@ -56,12 +50,13 @@ export async function GET(req: Request) {
 
   const rowTot = ws.addRow(["Total heures", ...data.histoTotauxHeures, data.histoGrandTotalLabel]);
   rowTot.font = { bold: true };
-  const rowFact = ws.addRow(["Jours facturés", ...data.histoJoursFactures.map((j) => (j != null ? j : "—"))]);
+  const factCells = data.histoJoursFactures.map((j) => (j != null ? j : "—"));
+  const rowFact = ws.addRow(["Jours facturés", ...factCells, periode ? (data.joursPeriode ?? "—") : ""]);
   rowFact.font = { bold: true, color: { argb: "FF1D6F42" } };
-  const rowMoy = ws.addRow(["Moyenne / jour facturé", ...data.histoMoyennes]);
+  const rowMoy = ws.addRow(["Moyenne / jour facturé", ...data.histoMoyennes, periode ? data.moyennePeriodeLabel : ""]);
   rowMoy.font = { color: { argb: "FF7F7F7F" } };
 
-  // Surlignage de la colonne du mois concerné par le rapport
+  // Surlignage de la colonne du mois concerné (mode mensuel uniquement)
   const pFocus = data.histoMoisIsFocus.findIndex(Boolean);
   if (pFocus >= 0) {
     const focusCol = pFocus + 2; // +1 colonne libellé, +1 base 1
@@ -74,7 +69,7 @@ export async function GET(req: Request) {
 
   ws.getColumn(1).width = 34;
   for (let i = 0; i < data.histoMoisLabels.length; i++) ws.getColumn(i + 2).width = 11;
-  ws.getColumn(data.histoMoisLabels.length + 2).width = 11;
+  ws.getColumn(data.histoMoisLabels.length + 2).width = 13;
 
   // ===================== Feuille « Détail » =====================
   const ds = wb.addWorksheet("Détail");
@@ -92,10 +87,47 @@ export async function GET(req: Request) {
   [14, 14, 34, 50, 12].forEach((w, i) => (ds.getColumn(i + 1).width = w));
 
   const buf = await wb.xlsx.writeBuffer();
+  return Buffer.from(buf);
+}
+
+function excelResponse(buf: Buffer, slug: string) {
   return new Response(new Uint8Array(buf), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="rapport_${data.fichierSlug}.xlsx"`,
+      "Content-Disposition": `attachment; filename="rapport_${slug}.xlsx"`,
     },
   });
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const client = url.searchParams.get("client") ?? "";
+  if (!client) return new Response("Paramètres manquants", { status: 400 });
+
+  const debut = url.searchParams.get("debut");
+  const fin = url.searchParams.get("fin");
+  if (debut && fin) {
+    // Mode période (date à date) — sans synthèse (lien direct, lecture seule).
+    const data = await getRapportPeriodeData(client, debut, fin);
+    return excelResponse(await buildWorkbook(data), data.fichierSlug);
+  }
+
+  const annee = Number(url.searchParams.get("annee"));
+  const mois = Number(url.searchParams.get("mois"));
+  if (!annee || !mois) return new Response("Paramètres manquants", { status: 400 });
+  const data = await getRapportData(client, annee, mois);
+  return excelResponse(await buildWorkbook(data), data.fichierSlug);
+}
+
+// Mode période (date à date) : la synthèse éditée à l'écran est transmise dans le corps.
+export async function POST(req: Request) {
+  const form = await req.formData();
+  const client = String(form.get("client") ?? "");
+  const debut = String(form.get("debut") ?? "");
+  const fin = String(form.get("fin") ?? "");
+  const synthese = String(form.get("synthese") ?? "");
+  if (!client || !debut || !fin) return new Response("Paramètres manquants", { status: 400 });
+
+  const data = await getRapportPeriodeData(client, debut, fin, synthese);
+  return excelResponse(await buildWorkbook(data), data.fichierSlug);
 }

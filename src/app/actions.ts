@@ -10,6 +10,67 @@ import { randomBytes } from "node:crypto";
 
 const MODELE_IA = "claude-sonnet-4-6"; // modèle de rédaction (modifiable)
 
+type ActSynthese = { dureeH: number; commentaire: string | null; missionType: { categorie: string; objet: string } | null };
+
+// Rédaction par l'IA de la synthèse d'activité sur une période (mensuelle ou personnalisée).
+// Renvoie le texte ; ne persiste rien.
+async function redigerSynthese(raisonSociale: string, periodeLabel: string, acts: ActSynthese[], amorce: string): Promise<string> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("Clé API Anthropic manquante. Ajoutez ANTHROPIC_API_KEY dans le fichier .env.");
+  }
+  if (acts.length === 0) {
+    throw new Error("Aucune activité sur cette période : rien à synthétiser.");
+  }
+
+  // Regroupement des commentaires par Catégorie › Objet, avec durées
+  const groupes = new Map<string, { duree: number; commentaires: string[] }>();
+  for (const a of acts) {
+    const cle = a.missionType ? `${a.missionType.categorie} › ${a.missionType.objet}` : "Autre";
+    const g = groupes.get(cle) ?? { duree: 0, commentaires: [] };
+    g.duree += a.dureeH;
+    if (a.commentaire?.trim()) g.commentaires.push(a.commentaire.trim());
+    groupes.set(cle, g);
+  }
+
+  let detail = "";
+  for (const [cle, g] of groupes) {
+    detail += `\n## ${cle} (${formatHM(g.duree)})\n`;
+    detail += g.commentaires.length ? g.commentaires.map((c) => `- ${c}`).join("\n") : "- (pas de commentaire détaillé)";
+    detail += "\n";
+  }
+
+  const system =
+    "Tu es Frédéric WOEHREL, consultant indépendant (Ethik & Co). " +
+    "Tu rédiges la synthèse de ton activité destinée à être envoyée par email à ton client. " +
+    "Écris à la première personne, sur un ton professionnel, et SYNTHÉTIQUE (pas de paragraphes rédigés). " +
+    `Format imposé : commence EXACTEMENT par la ligne « ${amorce} » ` +
+    "puis présente l'activité sous forme de points courts (puces commençant par « - »), regroupés par catégorie d'activité " +
+    "(intitule chaque catégorie sur sa propre ligne, suivie de ses puces). " +
+    "Chaque point doit être bref et factuel. " +
+    "N'utilise AUCUNE mise en forme Markdown (pas d'astérisques ** pour le gras, pas de #) : écris les intitulés de catégorie en texte simple, suivis du total d'heures entre parenthèses. " +
+    "Base-toi UNIQUEMENT sur les activités et commentaires fournis — n'invente rien. " +
+    "Pas de formule d'appel ni de signature (ni \"Bonjour\", ni \"Cordialement\"), pas de séparateur (\"---\").";
+
+  const prompt =
+    `Client : ${raisonSociale}\n` +
+    `Période : ${periodeLabel}\n\n` +
+    `Activités réalisées (par catégorie, avec durées et commentaires) :\n${detail}\n\n` +
+    `Rédige la synthèse correspondante.`;
+
+  const anthropic = new Anthropic();
+  const message = await anthropic.messages.create({
+    model: MODELE_IA,
+    max_tokens: 2000,
+    system,
+    messages: [{ role: "user", content: prompt }],
+  });
+  return message.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("\n")
+    .trim();
+}
+
 // Création d'une activité en mode rattrapage (heures saisies manuellement)
 export async function createActivite(formData: FormData) {
   const dateAct = String(formData.get("date") ?? "");
@@ -177,10 +238,6 @@ export async function genererSynthese(formData: FormData) {
   const mois = Number(formData.get("mois"));
   if (!clientId || !annee || !mois) return;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("Clé API Anthropic manquante. Ajoutez ANTHROPIC_API_KEY dans le fichier .env.");
-  }
-
   const client = await prisma.client.findUnique({ where: { id: clientId } });
   const debut = new Date(Date.UTC(annee, mois - 1, 1));
   const fin = new Date(Date.UTC(annee, mois, 1));
@@ -190,57 +247,12 @@ export async function genererSynthese(formData: FormData) {
     orderBy: [{ dateAct: "asc" }, { debutAct: "asc" }],
   });
 
-  if (acts.length === 0) {
-    throw new Error("Aucune activité ce mois-ci : rien à synthétiser.");
-  }
-
-  // Regroupement des commentaires par Catégorie › Objet, avec durées
-  const groupes = new Map<string, { duree: number; commentaires: string[] }>();
-  for (const a of acts) {
-    const cle = a.missionType ? `${a.missionType.categorie} › ${a.missionType.objet}` : "Autre";
-    const g = groupes.get(cle) ?? { duree: 0, commentaires: [] };
-    g.duree += a.dureeH;
-    if (a.commentaire?.trim()) g.commentaires.push(a.commentaire.trim());
-    groupes.set(cle, g);
-  }
-
-  let detail = "";
-  for (const [cle, g] of groupes) {
-    detail += `\n## ${cle} (${formatHM(g.duree)})\n`;
-    detail += g.commentaires.length ? g.commentaires.map((c) => `- ${c}`).join("\n") : "- (pas de commentaire détaillé)";
-    detail += "\n";
-  }
-
-  const system =
-    "Tu es Frédéric WOEHREL, consultant indépendant (Ethik & Co). " +
-    "Tu rédiges la synthèse mensuelle de ton activité destinée à être envoyée par email à ton client. " +
-    "Écris à la première personne, sur un ton professionnel, et SYNTHÉTIQUE (pas de paragraphes rédigés). " +
-    "Format imposé : commence EXACTEMENT par la ligne « Ci-dessous, l'essentiel de mon activité sur le mois : » " +
-    "puis présente l'activité sous forme de points courts (puces commençant par « - »), regroupés par catégorie d'activité " +
-    "(intitule chaque catégorie sur sa propre ligne, suivie de ses puces). " +
-    "Chaque point doit être bref et factuel. " +
-    "N'utilise AUCUNE mise en forme Markdown (pas d'astérisques ** pour le gras, pas de #) : écris les intitulés de catégorie en texte simple, suivis du total d'heures entre parenthèses. " +
-    "Base-toi UNIQUEMENT sur les activités et commentaires fournis — n'invente rien. " +
-    "Pas de formule d'appel ni de signature (ni \"Bonjour\", ni \"Cordialement\"), pas de séparateur (\"---\").";
-
-  const prompt =
-    `Client : ${client?.raisonSociale ?? ""}\n` +
-    `Période : ${MOIS[mois - 1]} ${annee}\n\n` +
-    `Activités réalisées (par catégorie, avec durées et commentaires) :\n${detail}\n\n` +
-    `Rédige la synthèse mensuelle correspondante.`;
-
-  const anthropic = new Anthropic();
-  const message = await anthropic.messages.create({
-    model: MODELE_IA,
-    max_tokens: 2000,
-    system,
-    messages: [{ role: "user", content: prompt }],
-  });
-  const texte = message.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("\n")
-    .trim();
+  const texte = await redigerSynthese(
+    client?.raisonSociale ?? "",
+    `${MOIS[mois - 1]} ${annee}`,
+    acts,
+    "Ci-dessous, l'essentiel de mon activité sur le mois :",
+  );
 
   await prisma.rapportMensuel.upsert({
     where: { clientId_annee_mois: { clientId, annee, mois } },
@@ -250,6 +262,32 @@ export async function genererSynthese(formData: FormData) {
 
   revalidatePath("/rapports");
   redirect(`/rapports?client=${encodeURIComponent(clientId)}&mois=${annee}-${String(mois).padStart(2, "0")}`);
+}
+
+// Synthèse sur une période personnalisée (date à date). Générée à la volée : renvoie
+// le texte au composant client, ne stocke rien en base.
+export async function genererSynthesePeriode(clientId: string, debutISO: string, finISO: string): Promise<string> {
+  if (!clientId || !debutISO || !finISO) {
+    throw new Error("Période incomplète.");
+  }
+
+  const client = await prisma.client.findUnique({ where: { id: clientId } });
+  const debut = new Date(`${debutISO}T00:00:00.000Z`);
+  const finExclusive = new Date(`${finISO}T00:00:00.000Z`);
+  finExclusive.setUTCDate(finExclusive.getUTCDate() + 1); // borne haute incluse
+  const acts = await prisma.activity.findMany({
+    where: { clientId, dateAct: { gte: debut, lt: finExclusive } },
+    include: { missionType: true },
+    orderBy: [{ dateAct: "asc" }, { debutAct: "asc" }],
+  });
+
+  const frDate = (d: Date) => `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
+  return redigerSynthese(
+    client?.raisonSociale ?? "",
+    `du ${frDate(debut)} au ${frDate(new Date(`${finISO}T00:00:00.000Z`))}`,
+    acts,
+    "Ci-dessous, l'essentiel de mon activité sur la période :",
+  );
 }
 
 // Enregistrement de la synthèse éditée manuellement
