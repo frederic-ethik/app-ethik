@@ -50,8 +50,9 @@ function repartir(debut: number, fin: number, r: RegleDemiJournee): { matin: num
   return { matin, aprem };
 }
 
-// Demi-journées par jour : Map<jour, 0 | 0.5 | 1>
-export function demiJourneesParJour(plages: ActivitePlage[], r: RegleDemiJournee): Map<string, number> {
+// Détail par jour : quelles demi-journées (matin / après-midi) sont comptées
+export type DemiJourneeJour = { matin: boolean; aprem: boolean };
+export function demiJourneesDetailParJour(plages: ActivitePlage[], r: RegleDemiJournee): Map<string, DemiJourneeJour> {
   const cumul = new Map<string, { matin: number; aprem: number }>();
   for (const p of plages) {
     if (p.finMin <= p.debutMin) continue;
@@ -61,12 +62,16 @@ export function demiJourneesParJour(plages: ActivitePlage[], r: RegleDemiJournee
     g.aprem += aprem;
     cumul.set(p.jour, g);
   }
+  const res = new Map<string, DemiJourneeJour>();
+  for (const [jour, g] of cumul) res.set(jour, { matin: g.matin > r.seuilMin, aprem: g.aprem > r.seuilMin });
+  return res;
+}
+
+// Demi-journées par jour : Map<jour, 0 | 0.5 | 1>
+export function demiJourneesParJour(plages: ActivitePlage[], r: RegleDemiJournee): Map<string, number> {
   const res = new Map<string, number>();
-  for (const [jour, g] of cumul) {
-    let j = 0;
-    if (g.matin > r.seuilMin) j += 0.5;
-    if (g.aprem > r.seuilMin) j += 0.5;
-    res.set(jour, j);
+  for (const [jour, d] of demiJourneesDetailParJour(plages, r)) {
+    res.set(jour, (d.matin ? 0.5 : 0) + (d.aprem ? 0.5 : 0));
   }
   return res;
 }

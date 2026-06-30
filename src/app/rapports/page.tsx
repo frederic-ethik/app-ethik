@@ -4,7 +4,8 @@ import { validerJoursRapport, genererSynthese } from "@/app/actions";
 import RapportNav from "@/components/RapportNav";
 import SyntheseTable from "@/components/SyntheseTable";
 import SyntheseClient from "@/components/SyntheseClient";
-import { totalDemiJournees, REGLE_DEMI_J_DEFAUT, type ActivitePlage, type RegleDemiJournee } from "@/lib/demi-journees";
+import CalendrierDemiJournees from "@/components/CalendrierDemiJournees";
+import { totalDemiJournees, demiJourneesDetailParJour, REGLE_DEMI_J_DEFAUT, type ActivitePlage, type RegleDemiJournee, type DemiJourneeJour } from "@/lib/demi-journees";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,15 @@ export default async function RapportsPage({
   // Indicateurs du mois sélectionné (focus)
   const totalSel = monthTotal[selKey] ?? 0;
   const joursIndic = joursDe(selKey);
+
+  // Détail jour par jour (matin/après-midi comptés) pour le calendrier du mois
+  const detailDemiJ = demiJourneesDetailParJour(plagesMois[selKey] ?? [], regleDemiJ);
+  const joursCalendrier: Record<number, DemiJourneeJour> = {};
+  const nbJoursSel = new Date(Date.UTC(selY, selM, 0)).getUTCDate();
+  for (let d = 1; d <= nbJoursSel; d++) {
+    const det = detailDemiJ.get(`${selY}-${pad(selM)}-${pad(d)}`);
+    if (det) joursCalendrier[d] = det;
+  }
   const joursFactures = factMap.get(selKey) ?? null;
   const moyFacturee = joursFactures ? totalSel / joursFactures : null;
   const synthese = rapports.find((r) => r.annee === selY && r.mois === selM)?.syntheseValidee ?? "";
@@ -210,6 +220,15 @@ export default async function RapportsPage({
               </form>
               <div><div style={{ fontSize: 12, color: "#997300" }}>Moyenne / jour facturé</div><div style={{ fontSize: 18, fontWeight: 600 }}>{moyFacturee ? formatHM(moyFacturee) : "—"}</div></div>
             </div>
+          </div>
+
+          {/* Calendrier des demi-journées théoriques (aide interne, non partagé au client) */}
+          <div style={card}>
+            <p style={partTitle}>Calendrier des demi-journées (indicatif) — {MOIS[selM - 1]} {selY}</p>
+            <p style={{ fontSize: 12, color: "#a5a5a5", margin: "0 0 14px" }}>
+              Ce que le compteur propose de comptabiliser, jour par jour, pour t&apos;aider à valider les jours facturés. Indicateur interne — jamais visible par le client.
+            </p>
+            <CalendrierDemiJournees annee={selY} mois={selM} jours={joursCalendrier} />
           </div>
 
           {/* Partie B — Détail des activités du mois sélectionné */}
