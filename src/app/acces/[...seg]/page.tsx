@@ -81,8 +81,12 @@ export default async function AccesClientPage({
 
   const firstIdx = bornes._min.dateAct!.getUTCFullYear() * 12 + bornes._min.dateAct!.getUTCMonth();
   const lastIdx = bornes._max.dateAct.getUTCFullYear() * 12 + bornes._max.dateAct.getUTCMonth();
+  // Par défaut (aucun mois demandé), on ouvre sur le mois PRÉCÉDENT le mois courant (M-1),
+  // borné à la plage de données disponibles. La navigation entre mois reste possible.
+  const now = new Date();
+  const moisPrecedentIdx = now.getUTCFullYear() * 12 + now.getUTCMonth() - 1;
   const [py, pm] = (sp.mois ?? "").split("-").map(Number);
-  let viewIdx = py && pm ? py * 12 + (pm - 1) : lastIdx;
+  let viewIdx = py && pm ? py * 12 + (pm - 1) : moisPrecedentIdx;
   viewIdx = Math.min(Math.max(viewIdx, firstIdx), lastIdx);
   const annee = Math.floor(viewIdx / 12);
   const mois = viewIdx % 12;
