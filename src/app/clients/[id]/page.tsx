@@ -61,7 +61,12 @@ export default async function FicheClientPage({
 
   const h = await headers();
   const baseUrl = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
-  const lienAcces = client?.tokenAcces ? `${baseUrl}/acces/${client.tokenAcces}` : "";
+  // Préfixe « nom du client » décoratif dans le lien (ignoré par l'authentification, qui
+  // ne repose que sur le jeton), pour distinguer les liens d'un coup d'œil.
+  const slug = client
+    ? client.raisonSociale.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "client"
+    : "";
+  const lienAcces = client?.tokenAcces ? `${baseUrl}/acces/${slug}/${client.tokenAcces}` : "";
 
   const card = { background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "20px 22px", marginBottom: 20 } as const;
   const cardTitle = { fontSize: 15, fontWeight: 600, color: "#0077a8", margin: "0 0 14px" } as const;

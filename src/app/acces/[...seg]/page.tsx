@@ -30,11 +30,16 @@ export default async function AccesClientPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ token: string }>;
+  params: Promise<{ seg: string[] }>;
   searchParams: Promise<{ mois?: string }>;
 }) {
-  const { token } = await params;
+  const { seg } = await params;
   const sp = await searchParams;
+
+  // Le lien peut porter un préfixe décoratif (nom du client) : /acces/<nom>/<jeton>.
+  // Seul le DERNIER segment est le jeton d'authentification ; le préfixe est ignoré.
+  const token = seg[seg.length - 1];
+  const basePath = seg.join("/"); // conservé tel quel dans la navigation entre les mois
 
   const client = await prisma.client.findFirst({
     where: { tokenAcces: token, accesActif: true },
@@ -109,9 +114,9 @@ export default async function AccesClientPage({
 
       {/* Navigation entre les mois */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, margin: "0 0 18px" }}>
-        {prev ? <a href={`/acces/${token}?mois=${prev}`} aria-label="Mois précédent" style={navA}>‹</a> : <span style={navDisabled}>‹</span>}
+        {prev ? <a href={`/acces/${basePath}?mois=${prev}`} aria-label="Mois précédent" style={navA}>‹</a> : <span style={navDisabled}>‹</span>}
         <span style={{ fontSize: 14, fontWeight: 600, color: "#595959", minWidth: 130, textAlign: "center" }}>{data.periodeLabel}</span>
-        {next ? <a href={`/acces/${token}?mois=${next}`} aria-label="Mois suivant" style={navA}>›</a> : <span style={navDisabled}>›</span>}
+        {next ? <a href={`/acces/${basePath}?mois=${next}`} aria-label="Mois suivant" style={navA}>›</a> : <span style={navDisabled}>›</span>}
       </div>
 
       {/* Récapitulatif */}
