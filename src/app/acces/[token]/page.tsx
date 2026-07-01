@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { MOIS } from "@/lib/format";
 import { getRapportData } from "@/lib/rapport-data";
@@ -6,6 +7,9 @@ export const dynamic = "force-dynamic";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const moisKey = (idx: number) => `${Math.floor(idx / 12)}-${pad((idx % 12) + 1)}`;
+
+// Robots, moteurs et aperçus de lien (email/messagerie) à ne pas comptabiliser comme consultation.
+const ROBOT_RE = /bot|crawl|spider|slurp|facebookexternalhit|whatsapp|slackbot|telegram|discord|twitter|linkedin|embedly|preview|monitor|pingdom|uptime|curl|wget|python-requests|headless|prerender|lighthouse/i;
 
 function Invalide() {
   return (
@@ -36,8 +40,22 @@ export default async function AccesClientPage({
   });
   if (!client) return <Invalide />;
 
+  // Journal des consultations — jamais bloquant pour le client, et hors robots/aperçus.
+  const ua = (await headers()).get("user-agent") ?? "";
+  const estRobot = ROBOT_RE.test(ua);
+  const clientId = client.id;
+  const tracer = async (moisVu: string | null) => {
+    if (estRobot) return;
+    try {
+      await prisma.accesVue.create({ data: { clientId, moisVu, userAgent: ua.slice(0, 300) } });
+    } catch {
+      /* le suivi ne doit jamais casser la page cliente */
+    }
+  };
+
   const bornes = await prisma.activity.aggregate({ where: { clientId: client.id }, _min: { dateAct: true }, _max: { dateAct: true } });
   if (!bornes._max.dateAct) {
+    await tracer(null);
     return (
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
         <Entete client={client.raisonSociale} periode="" />
@@ -53,6 +71,8 @@ export default async function AccesClientPage({
   viewIdx = Math.min(Math.max(viewIdx, firstIdx), lastIdx);
   const annee = Math.floor(viewIdx / 12);
   const mois = viewIdx % 12;
+
+  await tracer(`${annee}-${pad(mois + 1)}`);
 
   const data = await getRapportData(client.id, annee, mois + 1);
 

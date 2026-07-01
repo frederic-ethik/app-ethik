@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { MOIS } from "@/lib/format";
 import { enregistrerClient, enregistrerMissionType, basculerMissionType, enregistrerAccesClient, regenererTokenAcces } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,26 @@ export default async function FicheClientPage({
         include: { missionTypes: { orderBy: [{ actif: "desc" }, { categorie: "asc" }, { objet: "asc" }] } },
       });
   if (!isNew && !client) notFound();
+
+  // Journal des consultations de l'accès client (jamais bloquant : table éventuellement non migrée)
+  let vuesCount = 0;
+  let dernieresVues: { id: string; viewedAt: Date; moisVu: string | null }[] = [];
+  if (!isNew && client) {
+    try {
+      [vuesCount, dernieresVues] = await Promise.all([
+        prisma.accesVue.count({ where: { clientId: id } }),
+        prisma.accesVue.findMany({ where: { clientId: id }, orderBy: { viewedAt: "desc" }, take: 6, select: { id: true, viewedAt: true, moisVu: true } }),
+      ]);
+    } catch {
+      /* table pas encore disponible */
+    }
+  }
+  const fmtDT = (d: Date) => d.toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(":", "h");
+  const moisLabel = (mk: string | null) => {
+    if (!mk) return "—";
+    const [y, m] = mk.split("-").map(Number);
+    return `${MOIS[m - 1]} ${y}`;
+  };
 
   const h = await headers();
   const baseUrl = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
@@ -251,6 +272,31 @@ export default async function FicheClientPage({
               <p style={{ fontSize: 12, color: "#a5a5a5", margin: "8px 0 0" }}>
                 Sélectionne le lien pour le copier. « Régénérer » crée un nouveau lien et rend l&apos;ancien inutilisable.
               </p>
+            </div>
+          )}
+
+          {(client!.accesActif || vuesCount > 0) && (
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid rgba(0,0,0,.08)" }}>
+              <p style={{ ...label, marginBottom: 6 }}>Consultations</p>
+              {vuesCount === 0 ? (
+                <p style={{ fontSize: 13, color: "#a5a5a5", margin: 0 }}>Aucune consultation enregistrée pour le moment.</p>
+              ) : (
+                <>
+                  <p style={{ fontSize: 14, color: "#595959", margin: "0 0 10px" }}>
+                    Consulté <strong>{vuesCount}</strong> fois · dernière le <strong>{fmtDT(dernieresVues[0].viewedAt)}</strong>
+                  </p>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {dernieresVues.map((v) => (
+                      <li key={v.id} style={{ fontSize: 13, color: "#7F7F7F", padding: "3px 0" }}>
+                        {fmtDT(v.viewedAt)} <span style={{ color: "#a5a5a5" }}>· {moisLabel(v.moisVu)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p style={{ fontSize: 12, color: "#a5a5a5", margin: "8px 0 0" }}>
+                    Les aperçus de lien (email, messageries) et robots ne sont pas comptabilisés. 6 dernières visites affichées.
+                  </p>
+                </>
+              )}
             </div>
           )}
         </div>

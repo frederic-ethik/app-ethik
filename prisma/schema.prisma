@@ -78,9 +78,23 @@ model Client {
   missionTypes MissionType[]
   activities   Activity[]
   rapports     RapportMensuel[]
+  accesVues    AccesVue[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Journal des consultations de la page d'accès client en ligne (/acces/[token])
+model AccesVue {
+  id       String @id @default(uuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  viewedAt  DateTime @default(now())
+  moisVu    String? // mois consulté au format "YYYY-MM" (null si aucune activité)
+  userAgent String? // pour écarter les aperçus/robots et diagnostiquer
+
+  @@index([clientId, viewedAt])
 }
 
 // ===================== TYPES DE MISSIONS =====================
