@@ -51,8 +51,8 @@ export default async function AccesClientPage({
     if (estRobot) return;
     try {
       // « 1 notification par session » : on n'alerte que s'il n'y a pas eu de visite
-      // de ce client dans la dernière heure (évite le spam à la navigation entre mois).
-      const depuis = new Date(Date.now() - 60 * 60 * 1000);
+      // de ce client dans les 15 dernières minutes (évite le spam à la navigation entre mois).
+      const depuis = new Date(Date.now() - 15 * 60 * 1000);
       const recent = await prisma.accesVue.count({ where: { clientId, viewedAt: { gte: depuis } } });
       await prisma.accesVue.create({ data: { clientId, moisVu, userAgent: ua.slice(0, 300) } });
       if (recent === 0) {
