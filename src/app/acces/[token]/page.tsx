@@ -1,7 +1,9 @@
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { MOIS } from "@/lib/format";
 import { getRapportData } from "@/lib/rapport-data";
+import { notifierConsultation } from "@/lib/notif";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +46,18 @@ export default async function AccesClientPage({
   const ua = (await headers()).get("user-agent") ?? "";
   const estRobot = ROBOT_RE.test(ua);
   const clientId = client.id;
+  const raisonSociale = client.raisonSociale;
   const tracer = async (moisVu: string | null) => {
     if (estRobot) return;
     try {
+      // « 1 notification par session » : on n'alerte que s'il n'y a pas eu de visite
+      // de ce client dans la dernière heure (évite le spam à la navigation entre mois).
+      const depuis = new Date(Date.now() - 60 * 60 * 1000);
+      const recent = await prisma.accesVue.count({ where: { clientId, viewedAt: { gte: depuis } } });
       await prisma.accesVue.create({ data: { clientId, moisVu, userAgent: ua.slice(0, 300) } });
+      if (recent === 0) {
+        after(() => notifierConsultation(raisonSociale, moisVu));
+      }
     } catch {
       /* le suivi ne doit jamais casser la page cliente */
     }
