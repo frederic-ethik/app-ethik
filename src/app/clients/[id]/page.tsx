@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { MOIS } from "@/lib/format";
+import CopierLien from "@/components/CopierLien";
 import { enregistrerClient, enregistrerMissionType, basculerMissionType, enregistrerAccesClient, regenererTokenAcces } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
@@ -264,6 +265,7 @@ export default async function FicheClientPage({
               <p style={{ ...label, marginBottom: 6 }}>Lien à transmettre au client</p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 <input readOnly value={lienAcces} style={{ ...field, flex: 1, minWidth: 280, fontFamily: "monospace", fontSize: 13, color: "#0077a8" }} />
+                <CopierLien texte={lienAcces} />
                 <a href={lienAcces} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, padding: "9px 14px", borderRadius: 8, textDecoration: "none", background: "#eef7ff", color: "#0077a8", border: "1px solid #cfe8fb" }}>
                   Aperçu ↗
                 </a>
@@ -275,7 +277,7 @@ export default async function FicheClientPage({
                 </form>
               </div>
               <p style={{ fontSize: 12, color: "#a5a5a5", margin: "8px 0 0" }}>
-                Sélectionne le lien pour le copier. « Régénérer » crée un nouveau lien et rend l&apos;ancien inutilisable.
+Cliquez sur « Copier » pour copier l&apos;intégralité du lien. « Régénérer » crée un nouveau lien et rend l&apos;ancien inutilisable.
               </p>
             </div>
           )}
