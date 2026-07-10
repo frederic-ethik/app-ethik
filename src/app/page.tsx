@@ -179,7 +179,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
                     </span>
                   </div>
                   <div style={{ height: 9, background: "#e6eaec", borderRadius: 5 }}>
-                    <div style={{ height: 9, width: `${Math.max(width, p.j > 0 ? 4 : 0)}%`, background: atteint ? "#92D050" : "#00B0F0", borderRadius: 5 }} />
+                    <div style={{ height: 9, width: `${Math.max(width, p.j > 0 ? 4 : 0)}%`, background: atteint ? "#92D050" : "#FFC000", borderRadius: 5 }} />
                   </div>
                 </div>
               );
