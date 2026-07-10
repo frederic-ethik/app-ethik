@@ -112,6 +112,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
     .map((c) => ({ nom: c.raisonSociale, cible: c.cibleJoursMensuelle, j: joursParClient.get(c.id) ?? 0 }))
     .filter((p) => p.cible != null || p.j > 0)
     .sort((a, b) => b.j - a.j);
+  // Échelle des barres : proportionnelle au temps passé, relative au client le plus chargé.
+  const progMax = Math.max(0, ...progression.map((p) => p.j));
 
   const recentes = moisActs.slice(0, 8);
 
@@ -166,7 +168,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {progression.map((p) => {
               const atteint = p.cible != null && p.j >= p.cible;
-              const width = p.cible != null && p.cible > 0 ? Math.min(100, (p.j / p.cible) * 100) : p.j > 0 ? 100 : 0;
+              // Barre proportionnelle au temps passé (et non au taux d'atteinte de l'objectif).
+              const width = progMax > 0 ? (p.j / progMax) * 100 : 0;
               return (
                 <div key={p.nom}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#7F7F7F", marginBottom: 4 }}>
