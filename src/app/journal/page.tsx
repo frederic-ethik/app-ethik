@@ -53,6 +53,20 @@ export default async function JournalPage({
   filtreParams.set("fin", finISO);
   const retourQS = encodeURIComponent(filtreParams.toString());
 
+  // Raccourci mois précédent / suivant : cale sur un mois calendaire complet, basé sur le mois du « Du ».
+  const refIdx = debutDate.getUTCFullYear() * 12 + debutDate.getUTCMonth();
+  const refY = Math.floor(refIdx / 12);
+  const refM = refIdx % 12;
+  const moisHref = (idx: number) => {
+    const y = Math.floor(idx / 12);
+    const m0 = ((idx % 12) + 12) % 12;
+    const p = new URLSearchParams();
+    if (clientId) p.set("client", clientId);
+    p.set("debut", isoDate(new Date(Date.UTC(y, m0, 1))));
+    p.set("fin", isoDate(new Date(Date.UTC(y, m0 + 1, 0))));
+    return `/journal?${p.toString()}`;
+  };
+
   // Regroupement par jour
   const jours: { key: string; date: Date; items: typeof acts }[] = [];
   for (const a of acts) {
@@ -68,6 +82,7 @@ export default async function JournalPage({
 
   const label = { fontSize: 12, color: "#7F7F7F", marginBottom: 3, display: "block" } as const;
   const field = { fontSize: 14, padding: "8px 10px", border: "1px solid rgba(0,0,0,.2)", borderRadius: 8, background: "#fff", color: "#595959" } as const;
+  const navArrow = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 36, borderRadius: 6, textDecoration: "none", color: "#7F7F7F", fontSize: 18, border: "1px solid rgba(0,0,0,.12)", background: "#fff" } as const;
 
   return (
     <>
@@ -107,6 +122,11 @@ export default async function JournalPage({
           </select>
         </div>
         <button type="submit" style={{ ...field, cursor: "pointer", background: "#fff" }}>Filtrer</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
+          <Link href={moisHref(refIdx - 1)} title="Mois précédent" aria-label="Mois précédent" style={navArrow}>‹</Link>
+          <Link href={moisHref(refIdx)} title="Voir tout ce mois" style={{ fontSize: 13, fontWeight: 600, color: "#0077a8", textDecoration: "none", minWidth: 96, textAlign: "center" }}>{MOIS[refM]} {refY}</Link>
+          <Link href={moisHref(refIdx + 1)} title="Mois suivant" aria-label="Mois suivant" style={navArrow}>›</Link>
+        </div>
       </form>
 
       {jours.length === 0 ? (
