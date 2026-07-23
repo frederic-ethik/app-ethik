@@ -8,8 +8,9 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function DeplacementPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DeplacementPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ retour?: string }> }) {
   const { id } = await params;
+  const retour = (await searchParams).retour ?? "";
 
   const [act, settings] = await Promise.all([
     prisma.activity.findUnique({ where: { id }, include: { client: true, missionType: true, deplacement: true } }),
@@ -55,7 +56,7 @@ export default async function DeplacementPage({ params }: { params: Promise<{ id
   return (
     <>
       <div style={{ marginBottom: 14 }}>
-        <Link href="/journal" style={{ fontSize: 13, color: "#0077a8", textDecoration: "none" }}>‹ Retour au journal</Link>
+        <Link href={retour ? `/journal?${retour}` : "/journal"} style={{ fontSize: 13, color: "#0077a8", textDecoration: "none" }}>‹ Retour au journal</Link>
       </div>
       <h1 style={{ fontSize: 20, fontWeight: 600, color: "#595959", margin: "0 0 4px" }}>
         {d ? "Modifier le déplacement" : "Ajouter un déplacement"}
@@ -66,12 +67,13 @@ export default async function DeplacementPage({ params }: { params: Promise<{ id
       </p>
 
       <div style={{ maxWidth: 560, background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "20px 22px" }}>
-        <DeplacementForm activityId={id} init={init} baremes={baremes} cumul={cumul} />
+        <DeplacementForm activityId={id} init={init} baremes={baremes} cumul={cumul} retour={retour} />
       </div>
 
       {d && (
         <form action={supprimerDeplacement} style={{ marginTop: 14 }}>
           <input type="hidden" name="activityId" value={id} />
+          {retour && <input type="hidden" name="retour" value={retour} />}
           <button type="submit" style={{ fontSize: 13, padding: "8px 13px", borderRadius: 8, border: "1px solid rgba(0,0,0,.2)", background: "#fff", color: "#a32d2d", cursor: "pointer" }}>
             Supprimer ce déplacement
           </button>

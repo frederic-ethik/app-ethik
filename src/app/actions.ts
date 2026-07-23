@@ -10,6 +10,12 @@ import { randomBytes } from "node:crypto";
 
 const MODELE_IA = "claude-sonnet-4-6"; // modèle de rédaction (modifiable)
 
+// Destination de retour au journal en conservant le filtre courant (transmis via le champ « retour »).
+function destJournal(formData: FormData): string {
+  const retour = String(formData.get("retour") ?? "").trim();
+  return retour ? `/journal?${retour}&ok=1` : "/journal?ok=1";
+}
+
 type ActSynthese = { dureeH: number; commentaire: string | null; missionType: { categorie: string; objet: string } | null };
 
 // Rédaction par l'IA de la synthèse d'activité sur une période (mensuelle ou personnalisée).
@@ -208,7 +214,7 @@ export async function updateActivite(formData: FormData) {
 
   revalidatePath("/journal");
   revalidatePath("/");
-  redirect("/journal?ok=1");
+  redirect(destJournal(formData));
 }
 
 // Validation manuelle du nombre de jours travaillés d'un mois (rapport client)
@@ -437,7 +443,7 @@ export async function enregistrerDeplacement(formData: FormData) {
 
   revalidatePath("/journal");
   revalidatePath("/");
-  redirect("/journal?ok=1");
+  redirect(destJournal(formData));
 }
 
 // Suppression d'un déplacement
@@ -448,7 +454,7 @@ export async function supprimerDeplacement(formData: FormData) {
   await prisma.activity.update({ where: { id: activityId }, data: { hasDeplacement: false } });
   revalidatePath("/journal");
   revalidatePath("/");
-  redirect("/journal?ok=1");
+  redirect(destJournal(formData));
 }
 
 // Suppression d'une activité (depuis le journal)

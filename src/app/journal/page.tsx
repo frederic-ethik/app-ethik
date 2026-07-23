@@ -5,27 +5,53 @@ import { supprimerActivite } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
 
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const isoDate = (d: Date) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+
 export default async function JournalPage({
   searchParams,
 }: {
-  searchParams: Promise<{ client?: string; mois?: string; ok?: string; encours?: string }>;
+  searchParams: Promise<{ client?: string; mois?: string; debut?: string; fin?: string; ok?: string; encours?: string }>;
 }) {
   const sp = await searchParams;
   const now = new Date();
-  const moisStr = sp.mois || `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-  const [annee, moisNum] = moisStr.split("-").map(Number);
-  const debutMois = new Date(Date.UTC(annee, moisNum - 1, 1));
-  const finMois = new Date(Date.UTC(annee, moisNum, 1));
+  const defDebut = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const defFin = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+
+  // Filtre par plage de dates (date à date). Rétrocompat : ?mois=YYYY-MM → mois entier.
+  let dISO = sp.debut;
+  let fISO = sp.fin;
+  if (!dISO && !fISO && sp.mois && /^\d{4}-\d{2}$/.test(sp.mois)) {
+    const [my, mm] = sp.mois.split("-").map(Number);
+    dISO = `${sp.mois}-01`;
+    fISO = isoDate(new Date(Date.UTC(my, mm, 0)));
+  }
+  const parseISO = (s: string | undefined, fb: Date) =>
+    s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00.000Z`) : fb;
+  let debutDate = parseISO(dISO, defDebut);
+  let finDate = parseISO(fISO, defFin);
+  if (debutDate > finDate) [debutDate, finDate] = [finDate, debutDate];
+  const debutISO = isoDate(debutDate);
+  const finISO = isoDate(finDate);
+  const finExclusive = new Date(finDate);
+  finExclusive.setUTCDate(finExclusive.getUTCDate() + 1);
   const clientId = sp.client || "";
 
   const [clients, acts] = await Promise.all([
     prisma.client.findMany({ orderBy: [{ actif: "desc" }, { raisonSociale: "asc" }], select: { id: true, raisonSociale: true, actif: true } }),
     prisma.activity.findMany({
-      where: { dateAct: { gte: debutMois, lt: finMois }, ...(clientId ? { clientId } : {}) },
+      where: { dateAct: { gte: debutDate, lt: finExclusive }, ...(clientId ? { clientId } : {}) },
       include: { client: true, missionType: true, deplacement: { select: { id: true, totalFrais: true } } },
       orderBy: [{ dateAct: "desc" }, { debutAct: "desc" }],
     }),
   ]);
+
+  // Querystring du filtre courant, propagé aux pages d'édition pour revenir au même filtre.
+  const filtreParams = new URLSearchParams();
+  if (clientId) filtreParams.set("client", clientId);
+  filtreParams.set("debut", debutISO);
+  filtreParams.set("fin", finISO);
+  const retourQS = encodeURIComponent(filtreParams.toString());
 
   // Regroupement par jour
   const jours: { key: string; date: Date; items: typeof acts }[] = [];
@@ -47,7 +73,7 @@ export default async function JournalPage({
     <>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, color: "#595959", margin: 0 }}>Journal des activités</h1>
-        <span style={{ fontSize: 13, color: "#7F7F7F" }}>Total du mois : <b style={{ color: "#595959" }}>{formatHeuresCourt(totalMois)}</b> · {acts.length} activités</span>
+        <span style={{ fontSize: 13, color: "#7F7F7F" }}>Total de la période : <b style={{ color: "#595959" }}>{formatHeuresCourt(totalMois)}</b> · {acts.length} activités</span>
       </div>
 
       {sp.ok && (
@@ -64,8 +90,12 @@ export default async function JournalPage({
       {/* Filtres */}
       <form method="get" style={{ display: "flex", gap: 12, alignItems: "flex-end", marginBottom: 20, flexWrap: "wrap" }}>
         <div>
-          <label style={label}>Mois</label>
-          <input type="month" name="mois" defaultValue={moisStr} style={field} />
+          <label style={label}>Du</label>
+          <input type="date" name="debut" defaultValue={debutISO} style={field} />
+        </div>
+        <div>
+          <label style={label}>Au</label>
+          <input type="date" name="fin" defaultValue={finISO} style={field} />
         </div>
         <div>
           <label style={label}>Client</label>
@@ -107,15 +137,15 @@ export default async function JournalPage({
                         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           {!enCours && (a.hasDeplacement || a.deplacement) && (
                             a.deplacement ? (
-                              <Link href={`/deplacement/${a.id}`} title="Déplacement rattaché — modifier" style={{ color: "#00B0F0", fontSize: 12, textDecoration: "none" }}>
+                              <Link href={`/deplacement/${a.id}?retour=${retourQS}`} title="Déplacement rattaché — modifier" style={{ color: "#00B0F0", fontSize: 12, textDecoration: "none" }}>
                                 🚗 {a.deplacement.totalFrais.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €
                               </Link>
                             ) : (
-                              <Link href={`/deplacement/${a.id}`} title="Saisir les frais de déplacement" style={{ color: "#e8a13a", fontSize: 13, textDecoration: "none" }}>🚗 à compléter</Link>
+                              <Link href={`/deplacement/${a.id}?retour=${retourQS}`} title="Saisir les frais de déplacement" style={{ color: "#e8a13a", fontSize: 13, textDecoration: "none" }}>🚗 à compléter</Link>
                             )
                           )}
                           {!enCours && (
-                            <Link href={`/saisie/${a.id}`} title="Modifier l'activité" style={{ color: "#0077a8", fontSize: 14, textDecoration: "none" }}>✎</Link>
+                            <Link href={`/saisie/${a.id}?retour=${retourQS}`} title="Modifier l'activité" style={{ color: "#0077a8", fontSize: 14, textDecoration: "none" }}>✎</Link>
                           )}
                           {!enCours && (
                             <form action={supprimerActivite}>

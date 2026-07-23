@@ -11,10 +11,11 @@ export default async function EditActivitePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; retour?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
+  const retour = sp.retour ?? "";
 
   const [act, clients, types] = await Promise.all([
     prisma.activity.findUnique({ where: { id }, include: { client: true, deplacement: { select: { totalFrais: true } } } }),
@@ -48,7 +49,7 @@ export default async function EditActivitePage({
   return (
     <>
       <div style={{ marginBottom: 14 }}>
-        <Link href="/journal" style={{ fontSize: 13, color: "#0077a8", textDecoration: "none" }}>‹ Retour au journal</Link>
+        <Link href={retour ? `/journal?${retour}` : "/journal"} style={{ fontSize: 13, color: "#0077a8", textDecoration: "none" }}>‹ Retour au journal</Link>
       </div>
       <h1 style={{ fontSize: 20, fontWeight: 600, color: "#595959", margin: "0 0 8px" }}>
         {finalize ? "Terminer l'activité" : "Modifier l'activité"}
@@ -69,6 +70,7 @@ export default async function EditActivitePage({
           finalize={finalize}
           nextClientId={nextClientId}
           submitLabel={submitLabel}
+          retour={retour}
         />
       </div>
     </>

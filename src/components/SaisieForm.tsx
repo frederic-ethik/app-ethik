@@ -31,6 +31,7 @@ export default function SaisieForm({
   finalize = false,
   nextClientId = "",
   submitLabel,
+  retour = "",
 }: {
   clients: Client[];
   types: Type[];
@@ -43,6 +44,7 @@ export default function SaisieForm({
   finalize?: boolean;
   nextClientId?: string;
   submitLabel?: string;
+  retour?: string;
 }) {
   const isEdit = !!edit;
   const [mode, setMode] = useState<"badgeage" | "rattrapage">(isEdit ? "rattrapage" : initialMode);
@@ -123,6 +125,7 @@ export default function SaisieForm({
     <form ref={formRef} action={action}>
       {isEdit && <input type="hidden" name="id" value={edit!.id} />}
       {nextClientId && <input type="hidden" name="next" value={nextClientId} />}
+      {retour && <input type="hidden" name="retour" value={retour} />}
 
       {!isEdit && (
         <div style={{ display: "flex", gap: 6, background: "#f2f4f5", padding: 4, borderRadius: 8, marginBottom: 18 }}>

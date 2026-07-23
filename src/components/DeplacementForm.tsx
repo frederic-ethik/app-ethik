@@ -33,11 +33,13 @@ export default function DeplacementForm({
   init,
   baremes,
   cumul,
+  retour = "",
 }: {
   activityId: string;
   init: Init;
   baremes: { NISSAN_ARIYA_3CV: Bareme; VW_SHARAN_8CV: Bareme };
   cumul: { NISSAN_ARIYA_3CV: number; VW_SHARAN_8CV: number };
+  retour?: string;
 }) {
   const [f, setF] = useState<Init>(init);
   const set = (k: keyof Init) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -55,6 +57,7 @@ export default function DeplacementForm({
   return (
     <form action={enregistrerDeplacement}>
       <input type="hidden" name="activityId" value={activityId} />
+      {retour && <input type="hidden" name="retour" value={retour} />}
 
       <div style={{ marginBottom: 12 }}>
         <label style={label}>Description</label>
