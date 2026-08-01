@@ -51,7 +51,7 @@ export default async function JournalPage({
   if (clientId) filtreParams.set("client", clientId);
   filtreParams.set("debut", debutISO);
   filtreParams.set("fin", finISO);
-  const retourQS = encodeURIComponent(filtreParams.toString());
+  const retourQS = encodeURIComponent(`/journal?${filtreParams.toString()}`);
 
   // Raccourci mois précédent / suivant : cale sur un mois calendaire complet, basé sur le mois du « Du ».
   const refIdx = debutDate.getUTCFullYear() * 12 + debutDate.getUTCMonth();

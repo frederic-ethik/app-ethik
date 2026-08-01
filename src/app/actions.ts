@@ -10,10 +10,13 @@ import { randomBytes } from "node:crypto";
 
 const MODELE_IA = "claude-sonnet-4-6"; // modèle de rédaction (modifiable)
 
-// Destination de retour au journal en conservant le filtre courant (transmis via le champ « retour »).
-function destJournal(formData: FormData): string {
-  const retour = String(formData.get("retour") ?? "").trim();
-  return retour ? `/journal?${retour}&ok=1` : "/journal?ok=1";
+// Destination de retour (page + filtre) transmise via le champ « retour » = chemin relatif complet
+// (ex. "/journal?..." ou "/note-frais?..."). Repli sur le journal. On n'accepte que les chemins
+// internes (commençant par "/" mais pas "//") pour éviter toute redirection externe.
+function destRetour(formData: FormData): string {
+  const r = String(formData.get("retour") ?? "").trim();
+  const dest = r.startsWith("/") && !r.startsWith("//") ? r : "/journal";
+  return `${dest}${dest.includes("?") ? "&" : "?"}ok=1`;
 }
 
 type ActSynthese = { dureeH: number; commentaire: string | null; missionType: { categorie: string; objet: string } | null };
@@ -214,7 +217,7 @@ export async function updateActivite(formData: FormData) {
 
   revalidatePath("/journal");
   revalidatePath("/");
-  redirect(destJournal(formData));
+  redirect(destRetour(formData));
 }
 
 // Validation manuelle du nombre de jours travaillés d'un mois (rapport client)
@@ -443,7 +446,7 @@ export async function enregistrerDeplacement(formData: FormData) {
 
   revalidatePath("/journal");
   revalidatePath("/");
-  redirect(destJournal(formData));
+  redirect(destRetour(formData));
 }
 
 // Suppression d'un déplacement
@@ -454,7 +457,7 @@ export async function supprimerDeplacement(formData: FormData) {
   await prisma.activity.update({ where: { id: activityId }, data: { hasDeplacement: false } });
   revalidatePath("/journal");
   revalidatePath("/");
-  redirect(destJournal(formData));
+  redirect(destRetour(formData));
 }
 
 // Suppression d'une activité (depuis le journal)

@@ -49,7 +49,7 @@ export default async function EditActivitePage({
   return (
     <>
       <div style={{ marginBottom: 14 }}>
-        <Link href={retour ? `/journal?${retour}` : "/journal"} style={{ fontSize: 13, color: "#0077a8", textDecoration: "none" }}>‹ Retour au journal</Link>
+        <Link href={retour || "/journal"} style={{ fontSize: 13, color: "#0077a8", textDecoration: "none" }}>‹ Retour{retour.startsWith("/note-frais") ? " aux notes de frais" : " au journal"}</Link>
       </div>
       <h1 style={{ fontSize: 20, fontWeight: 600, color: "#595959", margin: "0 0 8px" }}>
         {finalize ? "Terminer l'activité" : "Modifier l'activité"}

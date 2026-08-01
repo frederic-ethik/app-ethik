@@ -25,6 +25,7 @@ export default async function NoteFraisPage({
 
   const data = await getNoteFraisData(client, debut, fin);
   const q = `client=${encodeURIComponent(client)}&debut=${debut}&fin=${fin}`;
+  const retourNF = encodeURIComponent(`/note-frais?${q}`); // pour revenir ici après avoir complété un déplacement
 
   // Activités marquées « frais de déplacement à saisir » mais NON complétées (aucun déplacement rattaché),
   // sur le même filtre client/période → alerte pour ne pas les oublier dans la note de frais.
@@ -104,7 +105,7 @@ export default async function NoteFraisPage({
                     <td style={tdWarn}>{a.client.raisonSociale}</td>
                     <td style={tdWarn}>{a.missionType ? `${a.missionType.categorie} › ${a.missionType.objet}` : "—"}</td>
                     <td style={{ ...tdWarn, textAlign: "right" }}>
-                      <Link href={`/deplacement/${a.id}`} style={{ color: "#0077a8", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>🚗 Compléter →</Link>
+                      <Link href={`/deplacement/${a.id}?retour=${retourNF}`} style={{ color: "#0077a8", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>🚗 Compléter →</Link>
                     </td>
                   </tr>
                 ))}
