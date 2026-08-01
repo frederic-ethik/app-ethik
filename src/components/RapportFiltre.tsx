@@ -42,9 +42,10 @@ export default function RapportFiltre({
           name="client"
           defaultValue={clientId}
           onChange={(e) => {
-            // Changer de client repart de zéro : on abandonne les dates/mois de l'ancien client
-            // (le serveur reprend alors les bornes du nouveau client). On garde la vue courante.
-            window.location.href = `/rapports?client=${encodeURIComponent(e.target.value)}${mode === "periode" ? "&mode=periode" : ""}`;
+            // Changer de client repart de zéro : on abandonne dates/mois/vue de l'ancien client.
+            // Le serveur choisit alors la vue selon le type d'accès (Mission → Période, Mensuel → Mois)
+            // et reprend la période de consultation du nouveau client.
+            window.location.href = `/rapports?client=${encodeURIComponent(e.target.value)}`;
           }}
           style={{ ...field, minWidth: 230 }}
         >

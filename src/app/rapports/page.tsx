@@ -35,7 +35,6 @@ export default async function RapportsPage({
   const sp = await searchParams;
   const now = new Date();
   const currentIdx = toIdx(now.getUTCFullYear(), now.getUTCMonth());
-  const mode: "mois" | "periode" = sp.mode === "periode" ? "periode" : "mois";
 
   const clients = await prisma.client.findMany({
     orderBy: [{ actif: "desc" }, { raisonSociale: "asc" }],
@@ -43,6 +42,11 @@ export default async function RapportsPage({
   });
   const clientId = sp.client || clients.find((c) => c.actif)?.id || clients[0]?.id;
   const client = clients.find((c) => c.id === clientId);
+
+  // Vue par défaut selon le type d'accès du client : Mission → Période, Mensuel → Mois.
+  // Un mode explicite dans l'URL (bascule manuelle) reste prioritaire.
+  const mode: "mois" | "periode" =
+    sp.mode === "periode" ? "periode" : sp.mode === "mois" ? "mois" : client?.accesType === "MISSION" ? "periode" : "mois";
 
   const [acts, rapports, settings] = await Promise.all([
     client
@@ -161,6 +165,8 @@ export default async function RapportsPage({
       ? debutDate >= client!.missionDebut! && finDate <= client!.missionFin!
       : focusIdx >= bDebIdx && focusIdx <= bFinIdx;
   }
+  const horsPeriode = hasBornes && !dansPeriode;
+  const estMission = client?.accesType === "MISSION";
 
   const pDebutIdx = toIdx(debutDate.getUTCFullYear(), debutDate.getUTCMonth());
   const pFinIdx = toIdx(finDate.getUTCFullYear(), finDate.getUTCMonth());
@@ -231,19 +237,23 @@ export default async function RapportsPage({
         <div style={card}>Aucun client.</div>
       ) : (
         <>
-          <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, background: horsPeriode ? "#e9edf0" : "#fff", borderColor: horsPeriode ? "rgba(0,0,0,.14)" : "rgba(0,0,0,.1)" }}>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 600 }}>{client.raisonSociale}</div>
-              <div style={{ fontSize: 12, color: "#7F7F7F" }}>
+              <div style={{ fontSize: 16, fontWeight: 600, color: horsPeriode ? "#9aa0a6" : "#595959" }}>{client.raisonSociale}</div>
+              <div style={{ fontSize: 12, color: horsPeriode ? "#aab0b5" : "#7F7F7F" }}>
                 {mode === "periode" ? `Du ${frD(debutDate)} au ${frD(finDate)}` : `${MOIS[selM - 1]} ${selY}`}
                 {client.cibleJoursMensuelle ? ` · cible ${client.cibleJoursMensuelle} j/mois` : ""}
               </div>
               {hasBornes && (
                 <div style={{ marginTop: 6 }}>
                   {dansPeriode ? (
-                    <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 10, background: "#eef7e1", color: "#5f8e2a", fontWeight: 600 }}>● Dans la période de consultation du client</span>
+                    <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 10, background: "#eef7e1", color: "#5f8e2a", fontWeight: 600 }}>
+                      {estMission ? "🎯 Mission en cours" : "● Dans la période de consultation"}
+                    </span>
                   ) : (
-                    <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 10, background: "#fff6e0", color: "#b06a00", fontWeight: 600 }}>● Hors période de consultation du client</span>
+                    <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 10, background: "#fff6e0", color: "#b06a00", fontWeight: 600 }}>
+                      {estMission ? "⏸ Hors période de mission" : "● Hors période de consultation"}
+                    </span>
                   )}
                 </div>
               )}
