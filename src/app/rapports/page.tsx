@@ -155,17 +155,18 @@ export default async function RapportsPage({
   const debutISO = isoD(debutDate);
   const finISO = isoD(finDate);
 
-  // La vue courante (mois sélectionné ou plage) est-elle DANS la période de consultation du client ?
+  // Statut de la période de mission / consultation PAR RAPPORT À AUJOURD'HUI :
+  // à venir (fin/début à venir), en cours (aujourd'hui dans la plage), ou terminée (fin dépassée).
   const hasBornes = !!(client?.missionDebut && client?.missionFin);
-  let dansPeriode = true;
-  if (hasBornes) {
-    const bDebIdx = toIdx(client!.missionDebut!.getUTCFullYear(), client!.missionDebut!.getUTCMonth());
-    const bFinIdx = toIdx(client!.missionFin!.getUTCFullYear(), client!.missionFin!.getUTCMonth());
-    dansPeriode = mode === "periode"
-      ? debutDate >= client!.missionDebut! && finDate <= client!.missionFin!
-      : focusIdx >= bDebIdx && focusIdx <= bFinIdx;
-  }
-  const horsPeriode = hasBornes && !dansPeriode;
+  const aujourdHui = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const statutMission: "en_cours" | "terminee" | "a_venir" | null = !hasBornes
+    ? null
+    : aujourdHui < client!.missionDebut!
+      ? "a_venir"
+      : aujourdHui > client!.missionFin!
+        ? "terminee"
+        : "en_cours";
+  const horsPeriode = hasBornes && statutMission !== "en_cours"; // bandeau grisé si la mission n'est pas en cours
   const estMission = client?.accesType === "MISSION";
 
   const pDebutIdx = toIdx(debutDate.getUTCFullYear(), debutDate.getUTCMonth());
@@ -246,13 +247,17 @@ export default async function RapportsPage({
               </div>
               {hasBornes && (
                 <div style={{ marginTop: 6 }}>
-                  {dansPeriode ? (
+                  {statutMission === "en_cours" ? (
                     <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 10, background: "#eef7e1", color: "#5f8e2a", fontWeight: 600 }}>
-                      {estMission ? "🎯 Mission en cours" : "● Dans la période de consultation"}
+                      {estMission ? "🎯 Mission en cours" : "● Période de consultation active"}
+                    </span>
+                  ) : statutMission === "terminee" ? (
+                    <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 10, background: "#eef1f3", color: "#7F7F7F", fontWeight: 600 }}>
+                      {estMission ? "✓ Mission terminée" : "○ Consultation terminée"}
                     </span>
                   ) : (
                     <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 10, background: "#fff6e0", color: "#b06a00", fontWeight: 600 }}>
-                      {estMission ? "⏸ Hors période de mission" : "● Hors période de consultation"}
+                      {estMission ? "🕐 Mission à venir" : "○ Consultation à venir"}
                     </span>
                   )}
                 </div>
