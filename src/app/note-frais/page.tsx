@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getNoteFraisData } from "@/lib/note-frais-data";
+import { heureDe } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +26,29 @@ export default async function NoteFraisPage({
   const data = await getNoteFraisData(client, debut, fin);
   const q = `client=${encodeURIComponent(client)}&debut=${debut}&fin=${fin}`;
 
+  // Activités marquées « frais de déplacement à saisir » mais NON complétées (aucun déplacement rattaché),
+  // sur le même filtre client/période → alerte pour ne pas les oublier dans la note de frais.
+  const debutDate = new Date(`${debut}T00:00:00.000Z`);
+  const finExclusive = new Date(`${fin}T00:00:00.000Z`);
+  finExclusive.setUTCDate(finExclusive.getUTCDate() + 1);
+  const incomplets = await prisma.activity.findMany({
+    where: {
+      hasDeplacement: true,
+      deplacement: { is: null },
+      dateAct: { gte: debutDate, lt: finExclusive },
+      ...(client !== "tous" ? { clientId: client } : {}),
+    },
+    include: { client: { select: { raisonSociale: true } }, missionType: { select: { categorie: true, objet: true } } },
+    orderBy: [{ dateAct: "asc" }, { debutAct: "asc" }],
+  });
+
   const field = { fontSize: 14, padding: "8px 10px", border: "1px solid rgba(0,0,0,.2)", borderRadius: 8, background: "#fff", color: "#595959" } as const;
   const card = { background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "18px 20px", marginBottom: 22 } as const;
   const th = { padding: "6px 6px", fontWeight: 600, color: "#7F7F7F", fontSize: 12, textAlign: "left" as const, borderBottom: "1px solid rgba(0,0,0,.2)" };
   const td = { padding: "5px 6px", fontSize: 12, borderBottom: "1px solid rgba(0,0,0,.06)" };
   const dlBtn = { fontSize: 14, padding: "10px 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600 } as const;
+  const thWarn = { padding: "6px 6px", fontWeight: 600, color: "#997300", fontSize: 12, textAlign: "left" as const, borderBottom: "1px solid #f0d9a0" };
+  const tdWarn = { padding: "5px 6px", fontSize: 12, borderBottom: "1px solid #f5e6c0", color: "#7a5a00" } as const;
 
   return (
     <>
@@ -61,6 +81,41 @@ export default async function NoteFraisPage({
           </>
         )}
       </form>
+
+      {incomplets.length > 0 && (
+        <div style={{ background: "#fff6e0", border: "1px solid #FFC000", borderRadius: 12, padding: "16px 20px", marginBottom: 22 }}>
+          <p style={{ fontWeight: 600, color: "#997300", margin: "0 0 10px", fontSize: 14 }}>
+            ⚠ {incomplets.length} activité{incomplets.length > 1 ? "s" : ""} avec des frais de déplacement à compléter sur cette période
+          </p>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 520 }}>
+              <thead>
+                <tr>
+                  <th style={thWarn}>Date · horaire</th>
+                  <th style={thWarn}>Client</th>
+                  <th style={thWarn}>Activité</th>
+                  <th style={{ ...thWarn, textAlign: "right" }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {incomplets.map((a) => (
+                  <tr key={a.id}>
+                    <td style={tdWarn}>{a.dateAct.toLocaleDateString("fr-FR")} · {heureDe(a.debutAct)}{a.finAct ? `–${heureDe(a.finAct)}` : ""}</td>
+                    <td style={tdWarn}>{a.client.raisonSociale}</td>
+                    <td style={tdWarn}>{a.missionType ? `${a.missionType.categorie} › ${a.missionType.objet}` : "—"}</td>
+                    <td style={{ ...tdWarn, textAlign: "right" }}>
+                      <Link href={`/deplacement/${a.id}`} style={{ color: "#0077a8", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>🚗 Compléter →</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p style={{ fontSize: 11, color: "#997300", margin: "10px 0 0" }}>
+            Ces frais ne sont pas encore inclus dans la note ci-dessous — complétez-les pour qu&apos;ils y figurent.
+          </p>
+        </div>
+      )}
 
       <div style={card}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
