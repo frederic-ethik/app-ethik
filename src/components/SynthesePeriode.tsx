@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { genererSynthesePeriode } from "@/app/actions";
+import { genererSynthesePeriode, enregistrerSyntheseMission } from "@/app/actions";
 import { SYNTHESE_PERIODE_ID } from "@/components/RapportExports";
 
 const btn = {
@@ -28,6 +28,22 @@ export default function SynthesePeriode({
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState("");
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const enregistrerMission = async () => {
+    setSaving(true);
+    setErreur("");
+    try {
+      await enregistrerSyntheseMission(clientId, debut, fin, texte);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Échec de l'enregistrement.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const generer = async () => {
     setLoading(true);
@@ -93,10 +109,13 @@ export default function SynthesePeriode({
             <button type="button" onClick={copier} style={{ ...btn, background: "#00B0F0", color: "#fff", border: "none" }}>
               {copied ? "✓ Copié !" : "⧉ Copier tout"}
             </button>
-            <span style={{ fontSize: 12, color: "#7F7F7F" }}>
-              ↑ Les boutons <strong>PDF / Excel</strong> en haut de page intègrent cette synthèse.
-            </span>
+            <button type="button" onClick={enregistrerMission} disabled={saving} style={{ ...btn, background: saved ? "#1d6f42" : "linear-gradient(90deg,#92D050,#7cbf3f)", color: "#fff", border: "none", fontWeight: 600, opacity: saving ? 0.6 : 1 }}>
+              {saved ? "✓ Enregistrée" : saving ? "⏳ …" : "💾 Enregistrer comme synthèse de mission"}
+            </button>
           </div>
+          <p style={{ fontSize: 12, color: "#7F7F7F", margin: "8px 0 0" }}>
+            « Enregistrer comme synthèse de mission » sauvegarde ce texte pour ce client et cale sa période de mission sur les dates ci-dessus (pour l&apos;accès client en format « Mission »). Les boutons <strong>PDF / Excel</strong> en haut de page intègrent cette synthèse.
+          </p>
         </div>
       )}
     </div>

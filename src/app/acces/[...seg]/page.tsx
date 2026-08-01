@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { MOIS } from "@/lib/format";
-import { getRapportData } from "@/lib/rapport-data";
+import { getRapportData, getRapportPeriodeData } from "@/lib/rapport-data";
 import { notifierConsultation } from "@/lib/notif";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +43,10 @@ export default async function AccesClientPage({
 
   const client = await prisma.client.findFirst({
     where: { tokenAcces: token, accesActif: true },
-    select: { id: true, raisonSociale: true, accesSynthese: true, accesTableau: true, accesDetail: true, accesJours: true },
+    select: {
+      id: true, raisonSociale: true, accesSynthese: true, accesTableau: true, accesDetail: true, accesJours: true,
+      accesType: true, missionDebut: true, missionFin: true, missionSynthese: true,
+    },
   });
   if (!client) return <Invalide />;
 
@@ -67,6 +70,131 @@ export default async function AccesClientPage({
       /* le suivi ne doit jamais casser la page cliente */
     }
   };
+
+  // ===================== Rendu « MISSION » (période fixe, sans navigation mensuelle) =====================
+  if (client.accesType === "MISSION" && client.missionDebut && client.missionFin) {
+    const debutISO = client.missionDebut.toISOString().slice(0, 10);
+    const finISO = client.missionFin.toISOString().slice(0, 10);
+    const data = await getRapportPeriodeData(client.id, debutISO, finISO, client.accesSynthese ? (client.missionSynthese ?? "") : "");
+    await tracer(null);
+
+    const card = { background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "20px 22px", marginBottom: 18 } as const;
+    const secTitle = { fontSize: 11, textTransform: "uppercase" as const, letterSpacing: ".04em", color: "#a5a5a5", margin: "0 0 12px" };
+    const th = { background: "#00B0F0", color: "#fff", padding: "6px 8px", fontSize: 12, fontWeight: 600, textAlign: "right" as const, whiteSpace: "nowrap" as const };
+    const thL = { ...th, textAlign: "left" as const };
+    const cell = { padding: "5px 8px", fontSize: 12, textAlign: "right" as const, borderBottom: "1px solid rgba(0,0,0,.06)", whiteSpace: "nowrap" as const };
+    const cellL = { ...cell, textAlign: "left" as const };
+    const tdWrap = { padding: "5px 8px", fontSize: 12, textAlign: "left" as const, borderBottom: "1px solid rgba(0,0,0,.06)", verticalAlign: "top" as const, overflowWrap: "anywhere" as const };
+    const tdDate = { ...tdWrap, whiteSpace: "nowrap" as const };
+    const tdDur = { ...tdWrap, textAlign: "right" as const, whiteSpace: "nowrap" as const };
+
+    return (
+      <div style={{ maxWidth: 760, margin: "0 auto" }}>
+        <Entete client={client.raisonSociale} periode={data.periodeLabel} />
+        <p style={{ fontSize: 13, color: "#0077a8", fontWeight: 600, margin: "-10px 0 18px" }}>Rapport de mission</p>
+
+        {/* Récapitulatif */}
+        <div style={{ ...card, display: "flex", gap: 28, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 12, color: "#7F7F7F" }}>Total d&apos;heures — mission</div>
+            <div style={{ fontSize: 22, fontWeight: 600, color: "#0077a8" }}>{data.totalHeuresLabel}</div>
+          </div>
+          {client.accesJours && (
+            <>
+              <div>
+                <div style={{ fontSize: 12, color: "#7F7F7F" }}>Jours facturés</div>
+                <div style={{ fontSize: 22, fontWeight: 600, color: "#595959" }}>{data.joursFactures != null ? data.joursFactures.toLocaleString("fr-FR") : "—"}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#7F7F7F" }}>Moyenne / jour</div>
+                <div style={{ fontSize: 22, fontWeight: 600, color: "#595959" }}>{data.moyenneParJourLabel}</div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Synthèse de mission */}
+        {client.accesSynthese && data.synthese && (
+          <div style={card}>
+            <p style={secTitle}>Synthèse de la mission</p>
+            <div style={{ fontSize: 14, color: "#595959", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{data.synthese}</div>
+          </div>
+        )}
+
+        {/* Répartition par type — agrégée sur la mission */}
+        {client.accesTableau && data.repartition.length > 0 && (
+          <div style={card}>
+            <p style={secTitle}>Répartition par type de mission</p>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ borderCollapse: "collapse", width: "100%" }}>
+                <thead>
+                  <tr>
+                    <th style={thL}>Catégorie › Objet</th>
+                    <th style={th}>Total mission</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.repartition.map((r, i) => (
+                    <tr key={i}>
+                      <td style={cellL}>{r.type}</td>
+                      <td style={cell}>{r.heuresLabel}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ fontWeight: 600 }}>
+                    <td style={{ ...cellL, borderTop: "2px solid rgba(0,0,0,.15)" }}>Total heures</td>
+                    <td style={{ ...cell, borderTop: "2px solid rgba(0,0,0,.15)" }}>{data.totalHeuresLabel}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Détail des activités */}
+        {client.accesDetail && (
+          <div style={card}>
+            <p style={secTitle}>Détail des activités — {data.periodeLabel}</p>
+            {data.activites.length === 0 ? (
+              <p style={{ fontSize: 14, color: "#a5a5a5" }}>Aucune activité sur la période.</p>
+            ) : (
+              <table style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "34%" }} />
+                  <col style={{ width: "41%" }} />
+                  <col style={{ width: "12%" }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th style={thL}>Date</th>
+                    <th style={thL}>Catégorie › Objet</th>
+                    <th style={thL}>Commentaire</th>
+                    <th style={th}>Durée</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.activites.map((a, i) => (
+                    <tr key={i}>
+                      <td style={tdDate}>{a.date}</td>
+                      <td style={tdWrap}>{a.type}</td>
+                      <td style={{ ...tdWrap, color: "#7F7F7F" }}>{a.commentaire}</td>
+                      <td style={tdDur}>{a.dureeLabel}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        <p style={{ fontSize: 12, color: "#a5a5a5", textAlign: "center", margin: "22px 0" }}>
+          Document de consultation — Ethik &amp; Co · {data.nomConsultant}
+        </p>
+      </div>
+    );
+  }
 
   const bornes = await prisma.activity.aggregate({ where: { clientId: client.id }, _min: { dateAct: true }, _max: { dateAct: true } });
   if (!bornes._max.dateAct) {

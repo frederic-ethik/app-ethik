@@ -40,6 +40,12 @@ enum MoyenPaiement {
   NC
 }
 
+// Type de rendu de l'accès client en ligne
+enum AccesType {
+  MENSUEL // navigation mois par mois (défaut)
+  MISSION // période fixe (du…au…) avec synthèse de mission
+}
+
 // ===================== CLIENTS =====================
 
 model Client {
@@ -74,6 +80,13 @@ model Client {
   accesTableau  Boolean  @default(true) // tableau de synthèse
   accesDetail   Boolean  @default(false) // détail des activités
   accesJours    Boolean  @default(true) // jours travaillés validés
+
+  // Type de rendu : mensuel (défaut) ou mission (période fixe + synthèse dédiée)
+  accesType         AccesType @default(MENSUEL)
+  missionDebut      DateTime? @db.Date
+  missionFin        DateTime? @db.Date
+  missionSynthese   String? // synthèse de mission (rédigée en vue Période, page Rapports)
+  missionSyntheseAt DateTime?
 
   missionTypes MissionType[]
   activities   Activity[]

@@ -68,6 +68,10 @@ export default async function FicheClientPage({
     ? client.raisonSociale.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "client"
     : "";
   const lienAcces = client?.tokenAcces ? `${baseUrl}/acces/${slug}/${client.tokenAcces}` : "";
+  const jourISO = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "");
+  const missionDebutISO = jourISO(client?.missionDebut);
+  const missionFinISO = jourISO(client?.missionFin);
+  const rapportMissionHref = `/rapports?client=${id}&mode=periode${missionDebutISO ? `&debut=${missionDebutISO}` : ""}${missionFinISO ? `&fin=${missionFinISO}` : ""}`;
 
   const card = { background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "20px 22px", marginBottom: 20 } as const;
   const cardTitle = { fontSize: 15, fontWeight: 600, color: "#0077a8", margin: "0 0 14px" } as const;
@@ -255,10 +259,45 @@ export default async function FicheClientPage({
                 </label>
               ))}
             </div>
+
+            <p style={{ ...label, marginBottom: 8 }}>Type d&apos;accès</p>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 6 }}>
+              <select name="accesType" defaultValue={client!.accesType} style={{ ...field, width: "auto", minWidth: 240 }}>
+                <option value="MENSUEL">Mensuel (navigation mois par mois)</option>
+                <option value="MISSION">Mission (période fixe)</option>
+              </select>
+              <div>
+                <label style={label}>Rapport du</label>
+                <input type="date" name="missionDebut" defaultValue={missionDebutISO} style={{ ...field, width: "auto" }} />
+              </div>
+              <div>
+                <label style={label}>au</label>
+                <input type="date" name="missionFin" defaultValue={missionFinISO} style={{ ...field, width: "auto" }} />
+              </div>
+            </div>
+            <p style={{ fontSize: 12, color: "#7F7F7F", margin: "0 0 16px" }}>
+              En mode « Mission », le client voit un rapport unique sur la période (sans navigation mensuelle), avec la synthèse de mission ci-dessous.
+            </p>
+
             <button type="submit" style={{ fontSize: 14, fontWeight: 600, padding: "10px 18px", borderRadius: 8, background: "#00B0F0", color: "#fff", border: "none", cursor: "pointer" }}>
               Enregistrer l&apos;accès
             </button>
           </form>
+
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(0,0,0,.08)" }}>
+            <p style={{ ...label, marginBottom: 6 }}>Synthèse de mission</p>
+            {client!.missionSynthese ? (
+              <p style={{ margin: 0, fontSize: 13, color: "#5f8e2a" }}>
+                ✓ Enregistrée{client!.missionSyntheseAt ? ` le ${new Date(client!.missionSyntheseAt).toLocaleDateString("fr-FR")}` : ""}.{" "}
+                <a href={rapportMissionHref} style={{ color: "#0077a8" }}>Modifier sur la page Rapports (vue Période) ↗</a>
+              </p>
+            ) : (
+              <p style={{ margin: 0, fontSize: 13, color: "#a5a5a5" }}>
+                Aucune pour le moment.{" "}
+                <a href={rapportMissionHref} style={{ color: "#0077a8" }}>La rédiger sur la page Rapports (vue Période) ↗</a>
+              </p>
+            )}
+          </div>
 
           {client!.accesActif && lienAcces && (
             <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid rgba(0,0,0,.08)" }}>

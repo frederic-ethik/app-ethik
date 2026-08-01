@@ -567,12 +567,20 @@ export async function enregistrerAccesClient(formData: FormData) {
   if (!id) return;
   const accesActif = formData.get("accesActif") === "on";
 
+  const jourOuNull = (v: FormDataEntryValue | null) => {
+    const s = String(v ?? "").trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00.000Z`) : null;
+  };
+
   const data: {
     accesActif: boolean;
     accesSynthese: boolean;
     accesTableau: boolean;
     accesDetail: boolean;
     accesJours: boolean;
+    accesType: "MENSUEL" | "MISSION";
+    missionDebut: Date | null;
+    missionFin: Date | null;
     tokenAcces?: string;
   } = {
     accesActif,
@@ -580,6 +588,9 @@ export async function enregistrerAccesClient(formData: FormData) {
     accesTableau: formData.get("accesTableau") === "on",
     accesDetail: formData.get("accesDetail") === "on",
     accesJours: formData.get("accesJours") === "on",
+    accesType: formData.get("accesType") === "MISSION" ? "MISSION" : "MENSUEL",
+    missionDebut: jourOuNull(formData.get("missionDebut")),
+    missionFin: jourOuNull(formData.get("missionFin")),
   };
 
   // Génère un jeton la première fois qu'on active l'accès
@@ -591,6 +602,25 @@ export async function enregistrerAccesClient(formData: FormData) {
   await prisma.client.update({ where: { id }, data });
   revalidatePath(`/clients/${id}`);
   redirect(`/clients/${id}?saved=1`);
+}
+
+// Enregistre la synthèse de mission (rédigée en vue Période sur la page Rapports) pour un client
+// et cale la période de mission sur les dates fournies. Renvoie true (appelée depuis un composant client).
+export async function enregistrerSyntheseMission(clientId: string, debutISO: string, finISO: string, texte: string): Promise<boolean> {
+  if (!clientId || !/^\d{4}-\d{2}-\d{2}$/.test(debutISO) || !/^\d{4}-\d{2}-\d{2}$/.test(finISO)) {
+    throw new Error("Période de mission invalide.");
+  }
+  await prisma.client.update({
+    where: { id: clientId },
+    data: {
+      missionSynthese: texte,
+      missionSyntheseAt: new Date(),
+      missionDebut: new Date(`${debutISO}T00:00:00.000Z`),
+      missionFin: new Date(`${finISO}T00:00:00.000Z`),
+    },
+  });
+  revalidatePath(`/clients/${clientId}`);
+  return true;
 }
 
 // Régénère le jeton (invalide l'ancien lien)
