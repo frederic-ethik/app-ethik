@@ -38,7 +38,16 @@ export default function RapportFiltre({
     <form method="get" style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
       <div>
         <label style={{ fontSize: 12, color: "#7F7F7F", display: "block", marginBottom: 3 }}>Client</label>
-        <select name="client" defaultValue={clientId} style={{ ...field, minWidth: 230 }}>
+        <select
+          name="client"
+          defaultValue={clientId}
+          onChange={(e) => {
+            // Changer de client repart de zéro : on abandonne les dates/mois de l'ancien client
+            // (le serveur reprend alors les bornes du nouveau client). On garde la vue courante.
+            window.location.href = `/rapports?client=${encodeURIComponent(e.target.value)}${mode === "periode" ? "&mode=periode" : ""}`;
+          }}
+          style={{ ...field, minWidth: 230 }}
+        >
           {clients.map((c) => (
             <option key={c.id} value={c.id}>{c.raisonSociale}{c.actif ? "" : " (archivé)"}</option>
           ))}
