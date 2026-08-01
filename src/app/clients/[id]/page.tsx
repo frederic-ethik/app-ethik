@@ -267,7 +267,7 @@ export default async function FicheClientPage({
                 <option value="MISSION">Mission (période fixe)</option>
               </select>
               <div>
-                <label style={label}>Rapport du</label>
+                <label style={label}>Consultation du</label>
                 <input type="date" name="missionDebut" defaultValue={missionDebutISO} style={{ ...field, width: "auto" }} />
               </div>
               <div>
@@ -276,7 +276,7 @@ export default async function FicheClientPage({
               </div>
             </div>
             <p style={{ fontSize: 12, color: "#7F7F7F", margin: "0 0 16px" }}>
-              En mode « Mission », le client voit un rapport unique sur la période (sans navigation mensuelle), avec la synthèse de mission ci-dessous.
+              Ces dates bornent la <strong>période consultable</strong> par le client. En <strong>Mensuel</strong> : la navigation est limitée à ces mois (laisser vide = tout l&apos;historique). En <strong>Mission</strong> : c&apos;est la période du rapport unique (sans navigation), avec la synthèse de mission ci-dessous.
             </p>
 
             <button type="submit" style={{ fontSize: 14, fontWeight: 600, padding: "10px 18px", borderRadius: 8, background: "#00B0F0", color: "#fff", border: "none", cursor: "pointer" }}>

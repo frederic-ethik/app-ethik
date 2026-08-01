@@ -136,8 +136,10 @@ export default async function RapportsPage({
   const moisStr = selKey;
 
   // ===================== Sélection PÉRIODE (date à date) =====================
-  const defDebut = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const defFin = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  // En vue Période, on propose par défaut la période de consultation paramétrée sur le client
+  // (bornes du/au) ; à défaut, le mois courant. L'utilisateur reste libre de modifier les dates.
+  const defDebut = client?.missionDebut ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const defFin = client?.missionFin ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const parseISO = (s: string | undefined, fb: Date) => {
     if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return fb;
     const d = new Date(`${s}T00:00:00.000Z`);
@@ -148,6 +150,17 @@ export default async function RapportsPage({
   if (debutDate > finDate) [debutDate, finDate] = [finDate, debutDate];
   const debutISO = isoD(debutDate);
   const finISO = isoD(finDate);
+
+  // La vue courante (mois sélectionné ou plage) est-elle DANS la période de consultation du client ?
+  const hasBornes = !!(client?.missionDebut && client?.missionFin);
+  let dansPeriode = true;
+  if (hasBornes) {
+    const bDebIdx = toIdx(client!.missionDebut!.getUTCFullYear(), client!.missionDebut!.getUTCMonth());
+    const bFinIdx = toIdx(client!.missionFin!.getUTCFullYear(), client!.missionFin!.getUTCMonth());
+    dansPeriode = mode === "periode"
+      ? debutDate >= client!.missionDebut! && finDate <= client!.missionFin!
+      : focusIdx >= bDebIdx && focusIdx <= bFinIdx;
+  }
 
   const pDebutIdx = toIdx(debutDate.getUTCFullYear(), debutDate.getUTCMonth());
   const pFinIdx = toIdx(finDate.getUTCFullYear(), finDate.getUTCMonth());
@@ -225,6 +238,15 @@ export default async function RapportsPage({
                 {mode === "periode" ? `Du ${frD(debutDate)} au ${frD(finDate)}` : `${MOIS[selM - 1]} ${selY}`}
                 {client.cibleJoursMensuelle ? ` · cible ${client.cibleJoursMensuelle} j/mois` : ""}
               </div>
+              {hasBornes && (
+                <div style={{ marginTop: 6 }}>
+                  {dansPeriode ? (
+                    <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 10, background: "#eef7e1", color: "#5f8e2a", fontWeight: 600 }}>● Dans la période de consultation du client</span>
+                  ) : (
+                    <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 10, background: "#fff6e0", color: "#b06a00", fontWeight: 600 }}>● Hors période de consultation du client</span>
+                  )}
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
               {client.accesType === "MISSION" ? (

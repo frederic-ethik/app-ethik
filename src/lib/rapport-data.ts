@@ -53,7 +53,9 @@ export type RapportData = {
   fichierSlug: string;
 };
 
-export async function getRapportData(clientId: string, annee: number, mois: number): Promise<RapportData> {
+// `borneMinIdx` (optionnel, index mois = année*12 + (mois-1)) borne l'historique du tableau :
+// les colonnes ne remontent jamais avant ce mois (utilisé pour l'accès client borné dans le temps).
+export async function getRapportData(clientId: string, annee: number, mois: number, borneMinIdx?: number): Promise<RapportData> {
   const [client, settings, acts, rapports] = await Promise.all([
     prisma.client.findUnique({ where: { id: clientId } }),
     prisma.settings.findUnique({ where: { id: "singleton" } }),
@@ -88,10 +90,12 @@ export async function getRapportData(clientId: string, annee: number, mois: numb
     rapports.find((r) => r.annee === Math.floor(idx / 12) && r.mois === (idx % 12) + 1)?.joursValides ?? null;
 
   // Fenêtre d'historique : on remonte depuis le mois sélectionné, on s'arrête dès
-  // qu'on rencontre PLUS de 2 mois consécutifs sans activité.
-  let startIdx = focusIdx;
+  // qu'on rencontre PLUS de 2 mois consécutifs sans activité — sans jamais dépasser
+  // la borne inférieure éventuelle (période de consultation autorisée).
+  const bas = borneMinIdx != null ? Math.max(firstIdx, borneMinIdx) : firstIdx;
+  let startIdx = Math.max(focusIdx, bas);
   let empties = 0;
-  for (let idx = focusIdx; idx >= firstIdx; idx--) {
+  for (let idx = focusIdx; idx >= bas; idx--) {
     if ((moisTotal.get(idx) ?? 0) > 0) {
       startIdx = idx;
       empties = 0;

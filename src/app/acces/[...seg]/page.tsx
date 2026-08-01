@@ -209,22 +209,38 @@ export default async function AccesClientPage({
 
   const firstIdx = bornes._min.dateAct!.getUTCFullYear() * 12 + bornes._min.dateAct!.getUTCMonth();
   const lastIdx = bornes._max.dateAct.getUTCFullYear() * 12 + bornes._max.dateAct.getUTCMonth();
+
+  // Bornage éventuel de la période consultable (paramétré sur le client), appliqué même en mensuel.
+  const monthIdxOf = (d: Date) => d.getUTCFullYear() * 12 + d.getUTCMonth();
+  const lowIdx = client.missionDebut ? Math.max(firstIdx, monthIdxOf(client.missionDebut)) : firstIdx;
+  const highIdx = client.missionFin ? Math.min(lastIdx, monthIdxOf(client.missionFin)) : lastIdx;
+
+  if (lowIdx > highIdx) {
+    await tracer(null);
+    return (
+      <div style={{ maxWidth: 700, margin: "0 auto" }}>
+        <Entete client={client.raisonSociale} periode="" />
+        <p style={{ fontSize: 14, color: "#7F7F7F" }}>Aucune activité sur la période de consultation.</p>
+      </div>
+    );
+  }
+
   // Par défaut (aucun mois demandé), on ouvre sur le mois PRÉCÉDENT le mois courant (M-1),
-  // borné à la plage de données disponibles. La navigation entre mois reste possible.
+  // borné à la période consultable. La navigation reste possible dans cette plage.
   const now = new Date();
   const moisPrecedentIdx = now.getUTCFullYear() * 12 + now.getUTCMonth() - 1;
   const [py, pm] = (sp.mois ?? "").split("-").map(Number);
   let viewIdx = py && pm ? py * 12 + (pm - 1) : moisPrecedentIdx;
-  viewIdx = Math.min(Math.max(viewIdx, firstIdx), lastIdx);
+  viewIdx = Math.min(Math.max(viewIdx, lowIdx), highIdx);
   const annee = Math.floor(viewIdx / 12);
   const mois = viewIdx % 12;
 
   await tracer(`${annee}-${pad(mois + 1)}`);
 
-  const data = await getRapportData(client.id, annee, mois + 1);
+  const data = await getRapportData(client.id, annee, mois + 1, lowIdx);
 
-  const prev = viewIdx > firstIdx ? moisKey(viewIdx - 1) : null;
-  const next = viewIdx < lastIdx ? moisKey(viewIdx + 1) : null;
+  const prev = viewIdx > lowIdx ? moisKey(viewIdx - 1) : null;
+  const next = viewIdx < highIdx ? moisKey(viewIdx + 1) : null;
 
   const card = { background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "20px 22px", marginBottom: 18 } as const;
   const secTitle = { fontSize: 11, textTransform: "uppercase" as const, letterSpacing: ".04em", color: "#a5a5a5", margin: "0 0 12px" };
