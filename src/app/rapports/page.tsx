@@ -39,7 +39,7 @@ export default async function RapportsPage({
 
   const clients = await prisma.client.findMany({
     orderBy: [{ actif: "desc" }, { raisonSociale: "asc" }],
-    select: { id: true, raisonSociale: true, typeClient: true, cibleJoursMensuelle: true, actif: true },
+    select: { id: true, raisonSociale: true, typeClient: true, cibleJoursMensuelle: true, actif: true, accesType: true, missionDebut: true, missionFin: true },
   });
   const clientId = sp.client || clients.find((c) => c.actif)?.id || clients[0]?.id;
   const client = clients.find((c) => c.id === clientId);
@@ -226,9 +226,20 @@ export default async function RapportsPage({
                 {client.cibleJoursMensuelle ? ` · cible ${client.cibleJoursMensuelle} j/mois` : ""}
               </div>
             </div>
-            <span style={{ fontSize: 12, padding: "4px 11px", borderRadius: 12, background: "#e0f5fe", color: "#0077a8" }}>
-              {TYPE_LABEL[client.typeClient] ?? client.typeClient}
-            </span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+              {client.accesType === "MISSION" ? (
+                <span style={{ fontSize: 12, padding: "4px 11px", borderRadius: 12, background: "#fff6e0", color: "#b06a00", fontWeight: 600, border: "1px solid #f0d9a0" }}>
+                  🎯 Accès mission{client.missionDebut && client.missionFin ? ` · ${frD(client.missionDebut)} → ${frD(client.missionFin)}` : ""}
+                </span>
+              ) : (
+                <span style={{ fontSize: 12, padding: "4px 11px", borderRadius: 12, background: "#eef1f3", color: "#7F7F7F", fontWeight: 600 }}>
+                  📅 Accès mensuel
+                </span>
+              )}
+              <span style={{ fontSize: 12, padding: "4px 11px", borderRadius: 12, background: "#e0f5fe", color: "#0077a8" }}>
+                {TYPE_LABEL[client.typeClient] ?? client.typeClient}
+              </span>
+            </div>
           </div>
 
           {/* Partie A — Tableau de synthèse */}
