@@ -581,6 +581,7 @@ export async function enregistrerAccesClient(formData: FormData) {
     accesTableau: boolean;
     accesDetail: boolean;
     accesJours: boolean;
+    accesNoteFrais: boolean;
     accesType: "MENSUEL" | "MISSION";
     missionDebut: Date | null;
     missionFin: Date | null;
@@ -591,6 +592,7 @@ export async function enregistrerAccesClient(formData: FormData) {
     accesTableau: formData.get("accesTableau") === "on",
     accesDetail: formData.get("accesDetail") === "on",
     accesJours: formData.get("accesJours") === "on",
+    accesNoteFrais: formData.get("accesNoteFrais") === "on",
     accesType: formData.get("accesType") === "MISSION" ? "MISSION" : "MENSUEL",
     missionDebut: jourOuNull(formData.get("missionDebut")),
     missionFin: jourOuNull(formData.get("missionFin")),

@@ -76,10 +76,11 @@ model Client {
   // Accès client lecture seule — paramétrage PAR CLIENT avec sections au choix
   tokenAcces    String?  @unique
   accesActif    Boolean  @default(false)
-  accesSynthese Boolean  @default(true) // synthèse IA
-  accesTableau  Boolean  @default(true) // tableau de synthèse
-  accesDetail   Boolean  @default(false) // détail des activités
-  accesJours    Boolean  @default(true) // jours travaillés validés
+  accesSynthese  Boolean @default(true) // synthèse IA
+  accesTableau   Boolean @default(true) // tableau de synthèse
+  accesDetail    Boolean @default(false) // détail des activités
+  accesJours     Boolean @default(true) // jours travaillés validés
+  accesNoteFrais Boolean @default(false) // note de frais (déplacements) de la période
 
   // Type de rendu : mensuel (défaut) ou mission (période fixe + synthèse dédiée)
   accesType         AccesType @default(MENSUEL)

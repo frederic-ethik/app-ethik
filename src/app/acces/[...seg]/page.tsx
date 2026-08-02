@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { MOIS } from "@/lib/format";
 import { getRapportData, getRapportPeriodeData } from "@/lib/rapport-data";
+import { getNoteFraisData, type NoteFraisData } from "@/lib/note-frais-data";
 import { notifierConsultation } from "@/lib/notif";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +46,7 @@ export default async function AccesClientPage({
     where: { tokenAcces: token, accesActif: true },
     select: {
       id: true, raisonSociale: true, accesSynthese: true, accesTableau: true, accesDetail: true, accesJours: true,
-      accesType: true, missionDebut: true, missionFin: true, missionSynthese: true,
+      accesType: true, missionDebut: true, missionFin: true, missionSynthese: true, accesNoteFrais: true,
     },
   });
   if (!client) return <Invalide />;
@@ -76,6 +77,7 @@ export default async function AccesClientPage({
     const debutISO = client.missionDebut.toISOString().slice(0, 10);
     const finISO = client.missionFin.toISOString().slice(0, 10);
     const data = await getRapportPeriodeData(client.id, debutISO, finISO, client.accesSynthese ? (client.missionSynthese ?? "") : "");
+    const nfMission = client.accesNoteFrais ? await getNoteFraisData(client.id, debutISO, finISO) : null;
     await tracer(null);
 
     const card = { background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "20px 22px", marginBottom: 18 } as const;
@@ -189,6 +191,8 @@ export default async function AccesClientPage({
           </div>
         )}
 
+        {nfMission && nfMission.lignes.length > 0 && <SectionNoteFrais data={nfMission} />}
+
         <p style={{ fontSize: 12, color: "#a5a5a5", textAlign: "center", margin: "22px 0" }}>
           Document de consultation — Ethik &amp; Co · {data.nomConsultant}
         </p>
@@ -238,6 +242,14 @@ export default async function AccesClientPage({
   await tracer(`${annee}-${pad(mois + 1)}`);
 
   const data = await getRapportData(client.id, annee, mois + 1, lowIdx);
+  // Note de frais du mois consulté (si l'accès est activé)
+  const nfMois = client.accesNoteFrais
+    ? await getNoteFraisData(
+        client.id,
+        `${annee}-${pad(mois + 1)}-01`,
+        `${annee}-${pad(mois + 1)}-${pad(new Date(Date.UTC(annee, mois + 1, 0)).getUTCDate())}`,
+      )
+    : null;
 
   const prev = viewIdx > lowIdx ? moisKey(viewIdx - 1) : null;
   const next = viewIdx < highIdx ? moisKey(viewIdx + 1) : null;
@@ -377,6 +389,8 @@ export default async function AccesClientPage({
         </div>
       )}
 
+      {nfMois && nfMois.lignes.length > 0 && <SectionNoteFrais data={nfMois} />}
+
       <p style={{ fontSize: 12, color: "#a5a5a5", textAlign: "center", margin: "22px 0" }}>
         Document de consultation — Ethik &amp; Co · {data.nomConsultant}
       </p>
@@ -392,6 +406,46 @@ function Entete({ client, periode }: { client: string; periode: string }) {
       <div>
         <h1 style={{ fontSize: 19, fontWeight: 600, color: "#595959", margin: 0 }}>Rapport d&apos;activité{periode ? ` — ${periode}` : ""}</h1>
         <div style={{ fontSize: 14, color: "#7F7F7F" }}>{client}</div>
+      </div>
+    </div>
+  );
+}
+
+// Note de frais (déplacements) de la période — vue synthétique pour le client.
+function SectionNoteFrais({ data }: { data: NoteFraisData }) {
+  const eur = (n: number) => (n ? n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €" : "—");
+  const card = { background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "20px 22px", marginBottom: 18 } as const;
+  const secTitle = { fontSize: 11, textTransform: "uppercase" as const, letterSpacing: ".04em", color: "#a5a5a5", margin: "0 0 12px" };
+  const th = { background: "#00B0F0", color: "#fff", padding: "6px 8px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" as const } as const;
+  const cell = { padding: "5px 8px", fontSize: 12, borderBottom: "1px solid rgba(0,0,0,.06)", verticalAlign: "top" as const };
+  return (
+    <div style={card}>
+      <p style={secTitle}>Note de frais — {data.periodeLabel}</p>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%" }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, textAlign: "left" }}>Date</th>
+              <th style={{ ...th, textAlign: "left" }}>Nature</th>
+              <th style={{ ...th, textAlign: "right" }}>Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.lignes.map((l, i) => (
+              <tr key={i}>
+                <td style={{ ...cell, whiteSpace: "nowrap" }}>{l.date}</td>
+                <td style={{ ...cell, overflowWrap: "anywhere" }}>{l.nature}</td>
+                <td style={{ ...cell, textAlign: "right", whiteSpace: "nowrap" }}>{eur(l.stotal)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ fontWeight: 600 }}>
+              <td style={{ ...cell, borderTop: "2px solid rgba(0,0,0,.15)" }} colSpan={2}>Total des frais</td>
+              <td style={{ ...cell, textAlign: "right", borderTop: "2px solid rgba(0,0,0,.15)", color: "#0077a8" }}>{eur(data.total)}</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   );

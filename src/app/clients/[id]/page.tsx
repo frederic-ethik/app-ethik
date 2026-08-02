@@ -252,6 +252,7 @@ export default async function FicheClientPage({
                 ["accesTableau", "Tableau de synthèse (par mois)", client!.accesTableau],
                 ["accesDetail", "Détail des activités", client!.accesDetail],
                 ["accesJours", "Jours facturés", client!.accesJours],
+                ["accesNoteFrais", "Note de frais (déplacements)", client!.accesNoteFrais],
               ].map(([name, lbl, def]) => (
                 <label key={name as string} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#595959" }}>
                   <input type="checkbox" name={name as string} defaultChecked={def as boolean} style={{ width: 16, height: 16 }} />
