@@ -186,7 +186,11 @@ export default function SaisieForm({
             </div>
           )}
           <p style={{ fontSize: 13, color: "#7F7F7F", margin: "0 0 16px" }}>
-            Le chrono démarre <b>dès que vous choisissez le client</b>. Vous préciserez le type de mission et le commentaire au moment de terminer.
+            {initialDepuis ? (
+              <>Le chrono repart <b>dès que vous choisissez le client</b>, à l&apos;heure de clôture de la session précédente. Vous préciserez le type de mission et le commentaire au moment de terminer.</>
+            ) : (
+              <>Le chrono démarre <b>dès que vous choisissez le client</b>. Vous préciserez le type de mission et le commentaire au moment de terminer.</>
+            )}
           </p>
           <button type="submit" style={primaryBtn}>{submitLabel ?? defaultLabel}</button>
         </>
