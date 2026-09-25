@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createActivite, startBadgeage, updateActivite, finaliserActivite } from "@/app/actions";
 import { dureeHeures, formatHeures } from "@/lib/format";
 
@@ -58,13 +58,10 @@ export default function SaisieForm({
 
   const badgeage = !isEdit && mode === "badgeage";
 
-  // Le chrono démarre dès qu'un client est connu (sélection ou pré-remplissage via "Changer")
-  useEffect(() => {
-    if (badgeage && clientId && !started.current) {
-      started.current = true;
-      requestAnimationFrame(() => formRef.current?.requestSubmit());
-    }
-  }, [badgeage, clientId]);
+  // NB : en badgeage, le chrono démarre quand l'utilisateur CHOISIT un client dans le menu
+  // (voir onChange du select). On ne démarre PAS automatiquement au montage même si un client
+  // est pré-sélectionné (ex. enchaînement après une session) : l'utilisateur doit pouvoir
+  // changer de client puis démarrer lui-même.
 
   const typesClient = useMemo(() => types.filter((t) => t.clientId === clientId), [types, clientId]);
   const detail = useMemo(() => types.find((t) => t.id === missionTypeId)?.detail ?? null, [types, missionTypeId]);
