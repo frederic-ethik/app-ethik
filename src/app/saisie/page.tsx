@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function SaisiePage({
   searchParams,
 }: {
-  searchParams: Promise<{ client?: string; mode?: string; date?: string; debut?: string; ok?: string }>;
+  searchParams: Promise<{ client?: string; mode?: string; date?: string; debut?: string; depuis?: string; ok?: string }>;
 }) {
   const sp = await searchParams;
   const [clients, types] = await Promise.all([
@@ -46,6 +46,7 @@ export default async function SaisiePage({
           initialMode={initialMode}
           initialDate={sp.date ?? ""}
           initialDebut={sp.debut ?? ""}
+          initialDepuis={sp.depuis ?? ""}
         />
       </div>
     </>

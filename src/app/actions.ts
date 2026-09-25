@@ -126,12 +126,22 @@ export async function startBadgeage(formData: FormData) {
   const enCours = await prisma.activity.findFirst({ where: { finAct: null } });
   if (enCours) redirect("/journal?encours=1");
 
-  const now = new Date();
-  const { date: dateStr } = parisParts(now);
+  // Enchaînement de session : `depuis` (heure de clôture de la session précédente) permet
+  // de démarrer dans la continuité horaire, sans coupure, plutôt qu'à l'heure de validation.
+  const maintenant = parisWallDate(new Date());
+  let debutAct = maintenant;
+  const depuisRaw = String(formData.get("depuis") ?? "");
+  if (depuisRaw) {
+    const d = new Date(depuisRaw);
+    const diff = maintenant.getTime() - d.getTime();
+    // on n'accepte la continuité que si c'est cohérent (dans le passé, < 24 h)
+    if (!Number.isNaN(d.getTime()) && diff >= 0 && diff < 24 * 3600 * 1000) debutAct = d;
+  }
+  const dateStr = debutAct.toISOString().slice(0, 10);
   await prisma.activity.create({
     data: {
       dateAct: new Date(`${dateStr}T00:00:00.000Z`),
-      debutAct: parisWallDate(now),
+      debutAct,
       finAct: null,
       dureeH: 0,
       clientId,
@@ -160,13 +170,14 @@ export async function finaliserActivite(formData: FormData) {
   }
 
   const fin = parisParts(new Date()).time.slice(0, 5); // HH:MM au moment de la validation
+  const finDate = new Date(`${dateAct}T${fin}:00.000Z`);
 
   await prisma.activity.update({
     where: { id },
     data: {
       dateAct: new Date(`${dateAct}T00:00:00.000Z`),
       debutAct: new Date(`${dateAct}T${debut}:00.000Z`),
-      finAct: new Date(`${dateAct}T${fin}:00.000Z`),
+      finAct: finDate,
       dureeH: dureeHeures(debut, fin),
       clientId,
       missionTypeId: missionTypeId || null,
@@ -177,7 +188,13 @@ export async function finaliserActivite(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/journal");
-  if (next) redirect(`/saisie?client=${encodeURIComponent(next)}&mode=badgeage`);
+  // Enchaînement : la nouvelle session démarre dans la continuité horaire de la clôture
+  // précédente (comme le badgeage mobile), et non à l'heure de validation. On transmet
+  // l'heure de fin via `depuis`, que startBadgeage utilisera comme heure de début.
+  if (next) {
+    const params = new URLSearchParams({ client: next, mode: "badgeage", depuis: finDate.toISOString() });
+    redirect(`/saisie?${params.toString()}`);
+  }
   redirect("/journal?ok=1");
 }
 

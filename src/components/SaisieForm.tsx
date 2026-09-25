@@ -27,6 +27,7 @@ export default function SaisieForm({
   initialMode = "rattrapage",
   initialDate = "",
   initialDebut = "",
+  initialDepuis = "",
   edit,
   finalize = false,
   nextClientId = "",
@@ -40,6 +41,7 @@ export default function SaisieForm({
   initialMode?: "badgeage" | "rattrapage";
   initialDate?: string;
   initialDebut?: string;
+  initialDepuis?: string;
   edit?: Edit;
   finalize?: boolean;
   nextClientId?: string;
@@ -177,6 +179,12 @@ export default function SaisieForm({
 
       {badgeage ? (
         <>
+          {initialDepuis && <input type="hidden" name="depuis" value={initialDepuis} />}
+          {initialDepuis && (
+            <div style={{ background: "#eef7e1", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#5f8e2a", margin: "0 0 12px" }}>
+              ✓ Session précédente clôturée — la nouvelle démarre dans la continuité, <b>sans coupure de temps</b>.
+            </div>
+          )}
           <p style={{ fontSize: 13, color: "#7F7F7F", margin: "0 0 16px" }}>
             Le chrono démarre <b>dès que vous choisissez le client</b>. Vous préciserez le type de mission et le commentaire au moment de terminer.
           </p>
