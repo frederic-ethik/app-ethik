@@ -143,6 +143,7 @@ export default async function NoteFraisPage({
                     <th style={{ ...th, textAlign: "right" }}>Hôtel</th>
                     <th style={{ ...th, textAlign: "right" }}>Divers</th>
                     <th style={{ ...th, textAlign: "right" }}>S-total</th>
+                    <th style={{ ...th, textAlign: "center" }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -162,12 +163,16 @@ export default async function NoteFraisPage({
                       <td style={{ ...td, textAlign: "right" }}>{eur(l.hotel)}</td>
                       <td style={{ ...td, textAlign: "right" }}>{eur(l.divers)}</td>
                       <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{eur(l.stotal)}</td>
+                      <td style={{ ...td, textAlign: "center" }}>
+                        <Link href={`/deplacement/${l.activityId}?retour=${retourNF}`} title="Modifier ce déplacement" style={{ color: "#0077a8", textDecoration: "none", fontSize: 14 }}>✎</Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr style={{ fontWeight: 600 }}>
-                    <td style={{ ...td, borderTop: "2px solid rgba(0,0,0,.15)" }} colSpan={data.multiClient ? 5 : 4}>TOTAUX</td>
+                    <td style={{ ...td, borderTop: "2px solid rgba(0,0,0,.15)" }} colSpan={data.multiClient ? 3 : 2}>TOTAUX</td>
+                    <td style={{ ...td, textAlign: "right", borderTop: "2px solid rgba(0,0,0,.15)" }}>{data.totaux.km ? `${Math.round(data.totaux.km)} km` : ""}</td>
                     <td style={{ ...td, textAlign: "right", borderTop: "2px solid rgba(0,0,0,.15)" }}>{eur(data.totaux.compensation)}</td>
                     <td style={{ ...td, textAlign: "right", borderTop: "2px solid rgba(0,0,0,.15)" }}>{eur(data.totaux.transport)}</td>
                     <td style={{ ...td, textAlign: "right", borderTop: "2px solid rgba(0,0,0,.15)" }}>{eur(data.totaux.parking)}</td>
@@ -175,6 +180,7 @@ export default async function NoteFraisPage({
                     <td style={{ ...td, textAlign: "right", borderTop: "2px solid rgba(0,0,0,.15)" }}>{eur(data.totaux.hotel)}</td>
                     <td style={{ ...td, textAlign: "right", borderTop: "2px solid rgba(0,0,0,.15)" }}>{eur(data.totaux.divers)}</td>
                     <td style={{ ...td, textAlign: "right", borderTop: "2px solid rgba(0,0,0,.15)" }}>{eur(data.totaux.stotal)}</td>
+                    <td style={{ ...td, borderTop: "2px solid rgba(0,0,0,.15)" }}></td>
                   </tr>
                 </tfoot>
               </table>

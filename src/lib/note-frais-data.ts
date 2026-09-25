@@ -9,6 +9,7 @@ export const VEH_LABEL: Record<string, string> = {
 const PAIE: Record<string, string> = { CARTE: "Carte", ESPECES: "Espèces", CHEQUE: "Chèque", NC: "NC" };
 
 export type LigneNF = {
+  activityId: string;
   date: string;
   client: string;
   nature: string;
@@ -78,6 +79,7 @@ export async function getNoteFraisData(clientId: string, debut: string, fin: str
   const footnotes: Footnote[] = vehOrder.map((v, i) => ({ index: i + 1, label: footnoteLabel(v, baremeFor(v)) }));
 
   const lignes: LigneNF[] = deps.map((d) => ({
+    activityId: d.activityId,
     date: d.dateDeplacement.toLocaleDateString("fr-FR"),
     client: d.activity.client.raisonSociale,
     nature: d.description ?? d.activity.commentaire ?? "",
