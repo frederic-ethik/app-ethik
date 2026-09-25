@@ -34,12 +34,14 @@ export default function DeplacementForm({
   baremes,
   cumul,
   retour = "",
+  dejaInclus = false,
 }: {
   activityId: string;
   init: Init;
   baremes: { NISSAN_ARIYA_3CV: Bareme; VW_SHARAN_8CV: Bareme };
   cumul: { NISSAN_ARIYA_3CV: number; VW_SHARAN_8CV: number };
   retour?: string;
+  dejaInclus?: boolean;
 }) {
   const [f, setF] = useState<Init>(init);
   const set = (k: keyof Init) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -54,10 +56,27 @@ export default function DeplacementForm({
   const field = { width: "100%", fontSize: 14, padding: "9px 10px", border: "1px solid rgba(0,0,0,.2)", borderRadius: 8, background: "#fff", color: "#595959", boxSizing: "border-box" as const };
   const row = { display: "flex", gap: 12, marginBottom: 12 } as const;
 
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (
+      dejaInclus &&
+      !window.confirm(
+        "Ce déplacement a déjà été inclus dans une note de frais. Le modifier ne met pas à jour le document déjà envoyé. Continuer quand même ?"
+      )
+    ) {
+      e.preventDefault();
+    }
+  };
+
   return (
-    <form action={enregistrerDeplacement}>
+    <form action={enregistrerDeplacement} onSubmit={onSubmit}>
       <input type="hidden" name="activityId" value={activityId} />
       {retour && <input type="hidden" name="retour" value={retour} />}
+
+      {dejaInclus && (
+        <div style={{ background: "#fff6e0", border: "1px solid #FFC000", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#997300", marginBottom: 16, fontWeight: 600 }}>
+          ⚠ Ce déplacement a déjà été inclus dans une note de frais.
+        </div>
+      )}
 
       <div style={{ marginBottom: 12 }}>
         <label style={label}>Description</label>

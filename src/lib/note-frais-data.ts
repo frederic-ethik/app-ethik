@@ -40,6 +40,7 @@ export type NoteFraisData = {
   lignes: LigneNF[];
   totaux: Totaux;
   footnotes: Footnote[];
+  deplacementIds: string[]; // IDs des déplacements inclus (pour estampiller à la génération PDF)
   fichierSlug: string;
 };
 
@@ -134,6 +135,7 @@ export async function getNoteFraisData(clientId: string, debut: string, fin: str
     lignes,
     totaux,
     footnotes,
+    deplacementIds: deps.map((d) => d.id),
     fichierSlug,
   };
 }

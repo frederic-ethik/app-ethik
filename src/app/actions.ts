@@ -3,7 +3,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { dureeHeures, parisParts, parisWallDate, formatHM, MOIS } from "@/lib/format";
-import { indemniteKm, type Bareme } from "@/lib/bareme";
+import { indemniteKm, trancheAppliquee, type Bareme } from "@/lib/bareme";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { randomBytes } from "node:crypto";
@@ -403,20 +403,26 @@ export async function enregistrerDeplacement(formData: FormData) {
 
   if (!dateDeplacement) throw new Error("La date du déplacement est requise.");
 
-  // Indemnité kilométrique URSSAF (selon véhicule + cumul annuel)
+  // Indemnité kilométrique URSSAF : le cumul annuel qui détermine la tranche est calculé
+  // PAR CLIENT (tous véhicules confondus), en excluant le déplacement en cours.
   let indemnite = 0;
+  let kmCumulAuMomentCalcul: number | null = null;
+  let kmTrancheAppliquee: number | null = null;
   if (vehicule && kmTotal && kmTotal > 0) {
     const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
     const bareme = (vehicule === "NISSAN_ARIYA_3CV" ? settings?.baremeNissanAriya : settings?.baremeVwSharan) as unknown as Bareme | null;
     if (bareme) {
+      const act = await prisma.activity.findUnique({ where: { id: activityId }, select: { clientId: true } });
       const annee = Number(dateDeplacement.slice(0, 4));
       const debut = new Date(Date.UTC(annee, 0, 1));
       const fin = new Date(Date.UTC(annee + 1, 0, 1));
       const agg = await prisma.deplacement.aggregate({
         _sum: { kmTotal: true },
-        where: { vehicule: vehicule as never, dateDeplacement: { gte: debut, lt: fin }, NOT: { activityId } },
+        where: { activity: { clientId: act?.clientId }, dateDeplacement: { gte: debut, lt: fin }, NOT: { activityId } },
       });
-      indemnite = indemniteKm(bareme, kmTotal, agg._sum.kmTotal ?? 0);
+      kmCumulAuMomentCalcul = agg._sum.kmTotal ?? 0;
+      indemnite = indemniteKm(bareme, kmTotal, kmCumulAuMomentCalcul);
+      kmTrancheAppliquee = trancheAppliquee(bareme, kmCumulAuMomentCalcul);
     }
   }
   const totalFrais =
@@ -439,8 +445,11 @@ export async function enregistrerDeplacement(formData: FormData) {
     fraisDivers,
     totalFrais,
     moyenPaiement: moyenPaiement as never,
+    kmTrancheAppliquee,
+    kmCumulAuMomentCalcul,
   };
 
+  // On ne touche pas à includedInNoteIds ici : l'inclusion passée reste un fait historique.
   await prisma.deplacement.upsert({ where: { activityId }, update: data, create: { activityId, ...data } });
   await prisma.activity.update({ where: { id: activityId }, data: { hasDeplacement: true } });
 

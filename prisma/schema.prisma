@@ -194,11 +194,28 @@ model Deplacement {
 
   moyenPaiement MoyenPaiement?
 
+  // Audit du calcul de l'indemnité km (barème URSSAF, cumul PAR CLIENT sur l'année)
+  kmTrancheAppliquee    Int? // n° de tranche appliquée (1, 2, 3…) au moment du calcul
+  kmCumulAuMomentCalcul Float? // cumul km du client (année) AVANT ce déplacement
+
+  // IDs des notes de frais dans lesquelles ce déplacement a déjà été inclus (généré en PDF)
+  includedInNoteIds String[] @default([])
+
   // Plusieurs justificatifs par déplacement (cadrage du 19/06)
   justificatifs Justificatif[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Note de frais générée (persistée à chaque téléchargement PDF) — pour l'audit d'inclusion
+model NoteFrais {
+  id        String    @id @default(uuid())
+  clientId  String? // null = « tous les clients »
+  debut     DateTime  @db.Date
+  fin       DateTime  @db.Date
+  total     Float     @default(0)
+  createdAt DateTime  @default(now())
 }
 
 model Justificatif {

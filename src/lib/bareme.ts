@@ -27,3 +27,15 @@ export function indemniteKm(bareme: Bareme, kmTrajet: number, cumulAvant: number
   const majore = total * (1 + (bareme.majoration ?? 0));
   return Math.round(majore * 100) / 100;
 }
+
+// Numéro de la tranche (1..n) dans laquelle tombe le cumul annuel AVANT le trajet.
+// = première tranche dont `cumulAvant < max` ; sinon la dernière tranche.
+export function trancheAppliquee(bareme: Bareme, cumulAvant: number): number | null {
+  if (!bareme?.tranches?.length) return null;
+  const cumul = Math.max(0, cumulAvant);
+  for (let i = 0; i < bareme.tranches.length; i++) {
+    const plafond = bareme.tranches[i].max ?? Infinity;
+    if (cumul < plafond) return i + 1;
+  }
+  return bareme.tranches.length;
+}

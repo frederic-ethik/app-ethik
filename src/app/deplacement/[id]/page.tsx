@@ -19,21 +19,25 @@ export default async function DeplacementPage({ params, searchParams }: { params
   if (!act) notFound();
 
   const d = act.deplacement;
+  const dejaInclus = (d?.includedInNoteIds.length ?? 0) > 0;
   const annee = act.dateAct.getUTCFullYear();
   const debut = new Date(Date.UTC(annee, 0, 1));
   const fin = new Date(Date.UTC(annee + 1, 0, 1));
-  const [aggAriya, aggSharan] = await Promise.all([
-    prisma.deplacement.aggregate({ _sum: { kmTotal: true }, where: { vehicule: "NISSAN_ARIYA_3CV", dateDeplacement: { gte: debut, lt: fin }, NOT: { activityId: id } } }),
-    prisma.deplacement.aggregate({ _sum: { kmTotal: true }, where: { vehicule: "VW_SHARAN_8CV", dateDeplacement: { gte: debut, lt: fin }, NOT: { activityId: id } } }),
-  ]);
+  // Cumul annuel PAR CLIENT (tous véhicules confondus), hors déplacement en cours.
+  const aggClient = await prisma.deplacement.aggregate({
+    _sum: { kmTotal: true },
+    where: { activity: { clientId: act.clientId }, dateDeplacement: { gte: debut, lt: fin }, NOT: { activityId: id } },
+  });
+  const cumulClient = aggClient._sum.kmTotal ?? 0;
 
   const baremes = {
     NISSAN_ARIYA_3CV: settings?.baremeNissanAriya as unknown as Bareme,
     VW_SHARAN_8CV: settings?.baremeVwSharan as unknown as Bareme,
   };
+  // Le cumul est propre au client (indépendant du véhicule) ; même valeur pour l'aperçu des deux barèmes.
   const cumul = {
-    NISSAN_ARIYA_3CV: aggAriya._sum.kmTotal ?? 0,
-    VW_SHARAN_8CV: aggSharan._sum.kmTotal ?? 0,
+    NISSAN_ARIYA_3CV: cumulClient,
+    VW_SHARAN_8CV: cumulClient,
   };
 
   const str = (n: number | null | undefined) => (n == null ? "" : String(n));
@@ -67,7 +71,7 @@ export default async function DeplacementPage({ params, searchParams }: { params
       </p>
 
       <div style={{ maxWidth: 560, background: "#fff", border: "1px solid rgba(0,0,0,.1)", borderRadius: 12, padding: "20px 22px" }}>
-        <DeplacementForm activityId={id} init={init} baremes={baremes} cumul={cumul} retour={retour} />
+        <DeplacementForm activityId={id} init={init} baremes={baremes} cumul={cumul} retour={retour} dejaInclus={dejaInclus} />
       </div>
 
       {d && (
