@@ -159,6 +159,18 @@ export default function SaisieForm({
         </div>
       )}
 
+      {badgeage && (
+        <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: "#595959", background: "#f2f4f5", borderRadius: 8, padding: "9px 12px", marginBottom: 12, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={forceManuel}
+            onChange={(e) => setForceManuel(e.target.checked)}
+            style={{ width: 16, height: 16 }}
+          />
+          <span>⏱ Forcer un horaire de démarrage <span style={{ color: "#7F7F7F" }}>(exceptionnel — à activer avant de choisir le client)</span></span>
+        </label>
+      )}
+
       <div style={{ marginBottom: 12 }}>
         <label style={label}>Client</label>
         <select
@@ -202,16 +214,6 @@ export default function SaisieForm({
               <>Le chrono démarre <b>dès que vous choisissez le client</b>. Vous préciserez le type de mission et le commentaire au moment de terminer.</>
             )}
           </p>
-
-          <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: "#595959", background: "#f2f4f5", borderRadius: 8, padding: "9px 12px", marginBottom: forceManuel ? 10 : 16, cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={forceManuel}
-              onChange={(e) => setForceManuel(e.target.checked)}
-              style={{ width: 16, height: 16 }}
-            />
-            <span>⏱ Forcer un horaire de démarrage <span style={{ color: "#7F7F7F" }}>(exceptionnel)</span></span>
-          </label>
 
           {forceManuel && (
             <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
