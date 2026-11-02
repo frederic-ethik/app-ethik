@@ -58,6 +58,14 @@ export default function SaisieForm({
   const formRef = useRef<HTMLFormElement>(null);
   const started = useRef(false);
 
+  // Badgeage : option exceptionnelle pour forcer l'horaire de démarrage (sinon = instant du choix du client).
+  const heureParisNow = useMemo(
+    () => new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }),
+    []
+  );
+  const [forceManuel, setForceManuel] = useState(false);
+  const [debutManuel, setDebutManuel] = useState(heureParisNow);
+
   const badgeage = !isEdit && mode === "badgeage";
 
   // NB : en badgeage, le chrono démarre quand l'utilisateur CHOISIT un client dans le menu
@@ -161,7 +169,7 @@ export default function SaisieForm({
             const v = e.target.value;
             setClientId(v);
             setMissionTypeId("");
-            if (badgeage && v && !started.current) {
+            if (badgeage && v && !started.current && !forceManuel) {
               started.current = true;
               requestAnimationFrame(() => formRef.current?.requestSubmit());
             }
@@ -186,12 +194,38 @@ export default function SaisieForm({
             </div>
           )}
           <p style={{ fontSize: 13, color: "#7F7F7F", margin: "0 0 16px" }}>
-            {initialDepuis ? (
+            {forceManuel ? (
+              <>Le chrono démarrera à l&apos;<b>horaire que vous indiquez ci-dessous</b>. Choisissez le client, vérifiez l&apos;heure, puis cliquez pour démarrer.</>
+            ) : initialDepuis ? (
               <>Le chrono repart <b>dès que vous choisissez le client</b>, à l&apos;heure de clôture de la session précédente. Vous préciserez le type de mission et le commentaire au moment de terminer.</>
             ) : (
               <>Le chrono démarre <b>dès que vous choisissez le client</b>. Vous préciserez le type de mission et le commentaire au moment de terminer.</>
             )}
           </p>
+
+          <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: "#595959", background: "#f2f4f5", borderRadius: 8, padding: "9px 12px", marginBottom: forceManuel ? 10 : 16, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={forceManuel}
+              onChange={(e) => setForceManuel(e.target.checked)}
+              style={{ width: 16, height: 16 }}
+            />
+            <span>⏱ Forcer un horaire de démarrage <span style={{ color: "#7F7F7F" }}>(exceptionnel)</span></span>
+          </label>
+
+          {forceManuel && (
+            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Date de démarrage</label>
+                <input type="date" name="dateManuel" defaultValue={initialDate || today} required style={field} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Heure de démarrage</label>
+                <input type="time" name="debutManuel" value={debutManuel} onChange={(e) => setDebutManuel(e.target.value)} required style={field} />
+              </div>
+            </div>
+          )}
+
           <button type="submit" style={primaryBtn}>{submitLabel ?? defaultLabel}</button>
         </>
       ) : (

@@ -126,16 +126,26 @@ export async function startBadgeage(formData: FormData) {
   const enCours = await prisma.activity.findFirst({ where: { finAct: null } });
   if (enCours) redirect("/journal?encours=1");
 
-  // Enchaînement de session : `depuis` (heure de clôture de la session précédente) permet
-  // de démarrer dans la continuité horaire, sans coupure, plutôt qu'à l'heure de validation.
   const maintenant = parisWallDate(new Date());
   let debutAct = maintenant;
-  const depuisRaw = String(formData.get("depuis") ?? "");
-  if (depuisRaw) {
-    const d = new Date(depuisRaw);
-    const diff = maintenant.getTime() - d.getTime();
-    // on n'accepte la continuité que si c'est cohérent (dans le passé, < 24 h)
-    if (!Number.isNaN(d.getTime()) && diff >= 0 && diff < 24 * 3600 * 1000) debutAct = d;
+
+  // Horaire de démarrage forcé manuellement (option exceptionnelle) : prioritaire. Sinon,
+  // enchaînement de session via `depuis` (heure de clôture de la session précédente, continuité
+  // sans coupure). Sans l'un ni l'autre : démarrage nominal à l'instant présent.
+  const debutManuel = String(formData.get("debutManuel") ?? "").trim(); // HH:MM
+  const dateManuel = String(formData.get("dateManuel") ?? "").trim(); // YYYY-MM-DD
+  if (debutManuel) {
+    const dte = dateManuel || maintenant.toISOString().slice(0, 10);
+    const d = new Date(`${dte}T${debutManuel}:00.000Z`);
+    if (!Number.isNaN(d.getTime())) debutAct = d;
+  } else {
+    const depuisRaw = String(formData.get("depuis") ?? "");
+    if (depuisRaw) {
+      const d = new Date(depuisRaw);
+      const diff = maintenant.getTime() - d.getTime();
+      // on n'accepte la continuité que si c'est cohérent (dans le passé, < 24 h)
+      if (!Number.isNaN(d.getTime()) && diff >= 0 && diff < 24 * 3600 * 1000) debutAct = d;
+    }
   }
   const dateStr = debutAct.toISOString().slice(0, 10);
   await prisma.activity.create({
